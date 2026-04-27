@@ -680,7 +680,7 @@
 <body>
 
 <h1>Pink Virus</h1>
-<div class="v">build minimal-68</div>
+<div class="v">build minimal-69</div>
 
 <div id="aboutModal" class="modal hidden">
   <div class="modalBg"></div>
@@ -1998,6 +1998,9 @@ function isInputFocused() {
 window.addEventListener('keydown', (e) => {
   // モーダル表示中・入力フォーカス中は盤面操作キーを無効化
   if (isAnyModalOpen() || isInputFocused()) return;
+  // ボタンにフォーカスが残ってるとz単体などが食われる場合があるので、操作キー前にblur
+  const ae = document.activeElement;
+  if (ae && ae.tagName === 'BUTTON') ae.blur();
   if (e.key === 'r' || e.key === 'R') { initStage(); return; }
   if (e.key === 'u' || e.key === 'U') { if (!isBusy) doUndo(); e.preventDefault(); return; }
   if (gameState !== 'play' || isBusy) return;
