@@ -680,7 +680,7 @@
 <body>
 
 <h1>Pink Virus</h1>
-<div class="v">build minimal-72</div>
+<div class="v">build minimal-74</div>
 
 <div id="aboutModal" class="modal hidden">
   <div class="modalBg"></div>
@@ -1416,6 +1416,7 @@ function resetStateForReplay() {
   digQueue = []; digCount = 0; turnCount = 0;
   gameState = 'play'; isBusy = false; fallCounter = 0;
   autoWalking = false;
+  pendingWalkPush = false;
 }
 
 // 同期版のwalk/dig：アニメなし、即座に状態を進める
@@ -1602,6 +1603,7 @@ function initStage() {
   digQueue = []; digCount = 0; turnCount = 0;
   gameState = 'play'; isBusy = false;
   autoWalking = false;
+  pendingWalkPush = false;
   moveLog = []; fallCounter = 0;
   mlEditing = false;
   // testPlayMode は applyEditorAndPlay 等の呼び出し側で制御するためここでは触らない
@@ -1737,6 +1739,7 @@ function fallLoop() {
   if (hasFooting(player.x, player.y)) {
     fallCounter = 0;
     isBusy = false;
+    flushPendingWalkPush();
     updateHUD(); render(); checkEnd();
     return;
   }
@@ -1750,29 +1753,49 @@ function fallLoop() {
   } else {
     fallCounter = 0;
     isBusy = false;
+    flushPendingWalkPush();
     updateHUD(); render(); checkEnd();
   }
 }
 
 function doMove(dx, dy, opts) {
-  // 自動歩行中・他の処理中は手動入力を無視（mlとの整合性を保つため）
-  if (autoWalking && (!opts || !opts.fromAuto)) return;
   if (isBusy) return;
   const before = { x: player.x, y: player.y };
-  act(() => tryMove(dx, dy), `move ${dx},${dy}`, opts);
-  if (player.x !== before.x || player.y !== before.y) {
-    if (!opts || !opts.skipMlPush) {
-      mlPushWalk(player.x, player.y);
+  // act() 内で1マス落下 + setTimeout で残り落下が始まる
+  // mlPushWalk は「移動直後の位置（落下前）」 を記録したいので、
+  // act() に飛び込む前にtryMoveの結果だけ取得する
+  // ただし tryMove は副作用ありなので、 ここでは act() 経由で実行し、
+  // その途中で「移動直後の位置」 をフックする必要がある
+  // → 簡単な方法：act の内側で tryMove 直後にフラグを立て、 ml にpush
+  pendingMovePushPos = null;
+  act(() => {
+    const ok = tryMove(dx, dy);
+    if (ok) {
+      // tryMove成功直後の位置を保存（落下前）
+      pendingMovePushPos = { x: player.x, y: player.y };
     }
+    return ok;
+  }, `move ${dx},${dy}`, opts);
+  if (pendingMovePushPos && (!opts || !opts.skipMlPush)) {
+    mlPushWalk(pendingMovePushPos.x, pendingMovePushPos.y);
+  }
+  pendingMovePushPos = null;
+}
+let pendingMovePushPos = null;
+let pendingWalkPush = false;
+function flushPendingWalkPush() {
+  if (pendingWalkPush) {
+    pendingWalkPush = false;
+    mlPushWalk(player.x, player.y);
   }
 }
 function doDig(side, opts) {
-  if (autoWalking && (!opts || !opts.fromAuto)) return;
   if (isBusy) return;
   const before = digCount;
   act(() => { const ok = tryDig(side); if (ok) reviveIfDue(); return ok; }, `dig ${side}`, opts);
   if (digCount > before) {
     if (!opts || !opts.skipMlPush) {
+      // dig push は即座でOK（座標を持たないので）
       mlPushDig(side);
     }
   }
