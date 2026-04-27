@@ -451,6 +451,12 @@
     gap: 8px;
     width: min(94vw, 500px);
   }
+  #easyStageGrid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    width: min(94vw, 500px);
+  }
   .stageBtn.userStage {
     aspect-ratio: auto;
     padding: 10px 8px;
@@ -674,7 +680,7 @@
 <body>
 
 <h1>Pink Virus</h1>
-<div class="v">build minimal-62</div>
+<div class="v">build minimal-63</div>
 
 <div id="aboutModal" class="modal hidden">
   <div class="modalBg"></div>
@@ -776,6 +782,10 @@
 <div id="selectScreen" class="screen">
   <div class="selectTitle">ステージ選択</div>
   <div id="stageGrid"></div>
+  <div id="easyPanel">
+    <div class="selectTitle subtitle">Easy</div>
+    <div id="easyStageGrid"></div>
+  </div>
   <div id="userStagesPanel" class="hidden">
     <div class="selectTitle subtitle">投稿ステージ</div>
     <div id="userStageGrid"></div>
@@ -1115,6 +1125,86 @@ const STAGE_10 = [
   "★≡■□□≡■□≡■□●",
 ];
 
+// Easyステージ
+const STAGE_E1 = [
+  "★●●●●●●●●●□□",
+  "■■■■■■■■■●■≡",
+  "□□□□□□□□□●■≡",
+  "□□□□□□□□□●■≡",
+  "□□□□□□□□□●■≡",
+  "□□□□□□□□□●■≡",
+  "□□□□□□□□□●■≡",
+  "□□□□□□□□□●■≡",
+  "□□□□□□□□□●■≡",
+  "□□□□□□□□□●■≡",
+  "■■■□□□□□□●□≡",
+  "■出■□□□□□□●□≡",
+];
+const STAGE_E2 = [
+  "★□□□□□□□□□□□",
+  "■■□□□≡■■■■■□",
+  "■■■□□≡田■■■■□",
+  "□●□□□≡田田■■■□",
+  "□□□□□≡田田田■■□",
+  "■■■田□≡□□□□●□",
+  "■■■■□≡□□□□□□",
+  "■■■■□≡□■■■■田",
+  "□□●□□≡□■■■■田",
+  "□□□□□≡□■■■田田",
+  "□□□□□≡□■■■□田",
+  "■■■■■□□■■■□出",
+];
+const STAGE_E3 = [
+  "□★□〜〜□□□田田田田",
+  "□■≡□□≡■□〜□田田",
+  "□■≡□□≡■■□〜〜□",
+  "●■□□□■■■□□□■",
+  "田田田田田田田田田田田■",
+  "田□□□□□□□□□□□",
+  "田□田■■■■■≡□□□",
+  "□□田●□□□□□■≡■",
+  "出田田田田田田田田田田田",
+  "≡□□□□□□□□□●田",
+  "≡■□□≡■□□≡■□田",
+  "≡■□□≡■□□≡■□田",
+];
+const STAGE_E4 = [
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "★□□□□□□□□□□□",
+  "田≡田≡■≡■≡田≡田≡",
+  "≡田≡■≡田≡■≡田≡田",
+  "■≡田≡■≡■≡田≡田≡",
+  "≡■≡■≡■≡■≡田≡田",
+  "出≡■≡■≡田≡■≡田≡",
+  "≡■≡田≡■≡■≡■≡●",
+];
+const STAGE_E5 = [
+  "★□□□□□□□□□□□",
+  "≡□□□□□□□□□□□",
+  "■■■■□□≡■■■■■",
+  "≡■■■□□≡田■■■□",
+  "□■■■≡□≡田■■■■",
+  "■■■■□□≡田□■■■",
+  "≡■■●□□≡田■■■□",
+  "≡□●●□□≡田■■■■",
+  "≡●●■□□≡田□■■■",
+  "≡●■■■■■田■■□□",
+  "□■■■□□□田■■■■",
+  "□□□□□□□田出■■■",
+];
+const EASY_STAGES = {
+  'e1': STAGE_E1,
+  'e2': STAGE_E2,
+  'e3': STAGE_E3,
+  'e4': STAGE_E4,
+  'e5': STAGE_E5,
+};
+const EASY_ORDER = ['e1','e2','e3','e4','e5'];
+
 // デフォルトステージ：ID '1'〜'10'
 const DEFAULT_STAGES = {
   '1': STAGE_1,
@@ -1144,11 +1234,13 @@ async function loadClearCounts() {
 function getStageBoard(id) {
   if (id === 'test' && testStageBoard) return testStageBoard;
   if (DEFAULT_STAGES[id]) return DEFAULT_STAGES[id];
+  if (EASY_STAGES[id]) return EASY_STAGES[id];
   const u = userStages.find(s => s.id === id);
   return u ? u.board : null;
 }
 function getStageMeta(id) {
   if (DEFAULT_STAGES[id]) return { id, title: 'ステージ' + id, author: '' };
+  if (EASY_STAGES[id]) return { id, title: 'Easy-' + id.slice(1), author: '' };
   return userStages.find(s => s.id === id) || null;
 }
 
@@ -1520,6 +1612,8 @@ function initStage() {
   const hStageEl = document.getElementById('hStage');
   if (DEFAULT_STAGES[currentStage]) {
     hStageEl.textContent = currentStage + '/' + TOTAL_DEFAULT_STAGES;
+  } else if (EASY_STAGES[currentStage]) {
+    hStageEl.textContent = 'Easy-' + currentStage.slice(1);
   } else {
     const meta = getStageMeta(currentStage);
     hStageEl.textContent = '投稿:' + (meta ? meta.title : '?');
@@ -1778,7 +1872,9 @@ function updateProgressUI() {
       markStageCleared(currentStage);
       const stageLabel = DEFAULT_STAGES[currentStage]
         ? 'ステージ' + currentStage
-        : (getStageMeta(currentStage)?.title || '投稿ステージ');
+        : EASY_STAGES[currentStage]
+          ? 'Easy-' + currentStage.slice(1)
+          : (getStageMeta(currentStage)?.title || '投稿ステージ');
       box.classList.add('show', 'clear');
       const onlineButtons = ONLINE_ENABLED
         ? '<button id="btnRegOpen">クリア者登録</button><button id="btnClearsOpen">クリア者一覧</button>'
@@ -1895,19 +1991,20 @@ function isInputFocused() {
   return false;
 }
 window.addEventListener('keydown', (e) => {
-  // モーダル表示中・入力フォーカス中は盤面操作キーを無効化
   if (isAnyModalOpen() || isInputFocused()) return;
-  if (e.key === 'r' || e.key === 'R') { initStage(); return; }
-  if (e.key === 'u' || e.key === 'U') { if (!isBusy) doUndo(); e.preventDefault(); return; }
+  // IME変換中は無視（日本語入力でz/xが吸われるケース対策）
+  if (e.isComposing || e.keyCode === 229) return;
+  const k = e.key;
+  const code = e.code; // e.code は IME や CapsLock の影響を受けにくい
+  if (k === 'r' || k === 'R' || code === 'KeyR') { initStage(); return; }
+  if (k === 'u' || k === 'U' || code === 'KeyU') { if (!isBusy) doUndo(); e.preventDefault(); return; }
   if (gameState !== 'play' || isBusy) return;
-  switch (e.key) {
-    case 'ArrowLeft':  doMove(-1, 0); e.preventDefault(); break;
-    case 'ArrowRight': doMove( 1, 0); e.preventDefault(); break;
-    case 'ArrowUp':    doMove( 0,-1); e.preventDefault(); break;
-    case 'ArrowDown':  doMove( 0, 1); e.preventDefault(); break;
-    case 'z': case 'Z': doDig(-1); e.preventDefault(); break;
-    case 'x': case 'X': doDig( 1); e.preventDefault(); break;
-  }
+  if (k === 'ArrowLeft')  { doMove(-1, 0); e.preventDefault(); return; }
+  if (k === 'ArrowRight') { doMove( 1, 0); e.preventDefault(); return; }
+  if (k === 'ArrowUp')    { doMove( 0,-1); e.preventDefault(); return; }
+  if (k === 'ArrowDown')  { doMove( 0, 1); e.preventDefault(); return; }
+  if (k === 'z' || k === 'Z' || code === 'KeyZ') { doDig(-1); e.preventDefault(); return; }
+  if (k === 'x' || k === 'X' || code === 'KeyX') { doDig( 1); e.preventDefault(); return; }
 });
 
 // スワイプ追従
@@ -2303,6 +2400,28 @@ function renderStageSelect() {
       switchScreen('game');
     });
     grid.appendChild(b);
+  }
+  // Easy 5面
+  const eg = document.getElementById('easyStageGrid');
+  if (eg) {
+    eg.innerHTML = '';
+    for (const id of EASY_ORDER) {
+      const b = document.createElement('button');
+      b.className = 'stageBtn';
+      if (isStageCleared(id)) b.classList.add('cleared');
+      const cn = clearCounts[id] || 0;
+      const cnStr = ONLINE_ENABLED ? `<div class="clearN">クリア者:${cn}</div>` : '';
+      const statusStr = isStageCleared(id) ? '<div class="status">CLEAR</div>' : '';
+      const label = id.slice(1); // 'e1' -> '1'
+      b.innerHTML = `<div class="num">E-${label}</div>${statusStr}${cnStr}`;
+      b.addEventListener('click', () => {
+        currentStage = id;
+        testPlayMode = false;
+        initStage();
+        switchScreen('game');
+      });
+      eg.appendChild(b);
+    }
   }
   // 投稿ステージ（5面以上クリアで表示）
   const userPanel = document.getElementById('userStagesPanel');
