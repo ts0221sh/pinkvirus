@@ -1,0 +1,2741 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark only">
+<title>PV minimal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DotGothic16', monospace, sans-serif;
+    background: #0a0e2a;
+    color: #e9ecff;
+    padding: 12px;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  h1 {
+    font-family: 'DotGothic16', monospace;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: #ff6ec7;
+    margin-bottom: 2px;
+  }
+  .v {
+    color: #8a93c4;
+    font-size: 11px;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+
+  #boardWrap {
+    width: min(94vw, 500px);
+    aspect-ratio: 1 / 1;
+    position: relative;
+    border: 2px solid #1e2a5e;
+    background: #05081c;
+    touch-action: none;
+  }
+  #board {
+    position: absolute; inset: 0;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(12, 1fr);
+  }
+  .cell {
+    border-right: 1px solid #1e2a5e;
+    border-bottom: 1px solid #1e2a5e;
+    position: relative;
+  }
+  .cell:nth-child(12n) { border-right: none; }
+  .cell:nth-child(n+133) { border-bottom: none; }
+
+  /* 通常ブロック：色のみ */
+  .cell.b, .ecell.b {
+    background: linear-gradient(180deg, #c46444 0%, #a14828 50%, #6e2f15 100%);
+    box-shadow:
+      inset 1px 1px 0 rgba(255,200,160,0.4),
+      inset -1px -1px 0 rgba(40,15,5,0.7);
+  }
+  .cell.b::before, .ecell.b::before,
+  .cell.b::after, .ecell.b::after { content: none; }
+
+  /* 固定ブロック：色のみ */
+  .cell.f, .ecell.f {
+    background: linear-gradient(180deg, #b4d8ec 0%, #6fa9c7 50%, #3a6c8a 100%);
+    box-shadow:
+      inset 1px 1px 0 rgba(220,240,255,0.55),
+      inset -1px -1px 0 rgba(20,40,60,0.7);
+  }
+  .cell.f::before, .ecell.f::before { content: none; }
+
+  .cell.l::before, .ecell.l::before {
+    content: ''; position: absolute;
+    top: 0; bottom: 0; left: 18%; width: 14%; background: #6eff8a;
+  }
+  .cell.l::after, .ecell.l::after {
+    content: ''; position: absolute;
+    top: 0; bottom: 0; right: 18%; width: 14%; background: #6eff8a;
+  }
+  .cell.l, .ecell.l {
+    background-image: repeating-linear-gradient(
+      to bottom, transparent 0%, transparent 13%,
+      #6eff8a 13%, #6eff8a 20%, transparent 20%, transparent 33.33%);
+  }
+
+  .cell.r::before, .ecell.r::before {
+    content: ''; position: absolute;
+    left: 0; right: 0; top: 22%; height: 12%;
+    background: #ffe24a;
+  }
+  .cell.r::after, .ecell.r::after {
+    content: ''; position: absolute;
+    left: 0; right: 0; top: 22%; height: 12%;
+    background-image: repeating-linear-gradient(90deg, rgba(0,0,0,0.25) 0 2px, transparent 2px 6px);
+  }
+
+  /* 出口（珠全取後）：ポータル風 */
+  .cell.e, .ecell.e {
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 70%,
+        rgba(255,255,200,0.95) 0%,
+        rgba(255,224,80,0.7) 25%,
+        rgba(255,140,0,0.5) 55%,
+        rgba(120,40,0,0.2) 90%,
+        rgba(0,0,0,0) 100%),
+      linear-gradient(180deg, #1a0a2e 0%, #2a1438 50%, #0a0a1a 100%);
+    box-shadow:
+      inset 0 0 8px rgba(255,200,80,0.6),
+      inset 1px 1px 0 rgba(255,255,255,0.15),
+      inset -1px -1px 0 rgba(0,0,0,0.7);
+    overflow: hidden;
+    position: relative;
+  }
+  /* 上向きの光柱 */
+  .cell.e::before, .ecell.e::before {
+    content: '';
+    position: absolute;
+    left: 50%; bottom: 0;
+    width: 60%; height: 100%;
+    transform: translateX(-50%);
+    background: linear-gradient(to top,
+      rgba(255,240,150,0.85) 0%,
+      rgba(255,200,80,0.5) 30%,
+      rgba(255,140,0,0.2) 65%,
+      rgba(255,140,0,0) 100%);
+    pointer-events: none;
+  }
+  /* 内側の輝く粒（静止） */
+  .cell.e::after, .ecell.e::after {
+    content: '';
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 30%; height: 30%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle,
+      rgba(255,255,220,0.95) 0%,
+      rgba(255,210,100,0.6) 40%,
+      rgba(255,140,0,0) 80%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .cell.p::before, .ecell.p::before {
+    content: ''; position: absolute; inset: 22%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff 0%, #b9e8ff 25%, #4fc3ff 70%, #0a5ca8 100%);
+  }
+
+  /* これは何？ モーダル */
+  .modal { position: fixed; inset: 0; z-index: 100; }
+  .modal.hidden { display: none; }
+  .modalBg {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.7);
+  }
+  .modalBox {
+    position: relative;
+    max-width: 480px;
+    margin: 8vh auto 0;
+    width: 92vw;
+    background: #0a0e2a;
+    border: 2px solid #ff6ec7;
+    box-shadow: 0 0 0 1px rgba(255,110,199,0.3) inset;
+    padding: 16px 18px;
+    color: #e9ecff;
+    font-family: 'DotGothic16', monospace;
+  }
+  .modalTitle {
+    font-size: 18px;
+    color: #ff6ec7;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #1e2a5e;
+    padding-bottom: 6px;
+  }
+  .modalBody {
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .modalBody p {
+    margin-bottom: 10px;
+  }
+  .modalBody p:last-child { margin-bottom: 0; }
+  .modalBody label {
+    display: block;
+    font-size: 12px;
+    color: #b9e8ff;
+    margin: 8px 0 4px;
+  }
+  .modalBody input[type="text"] {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    background: #02030a;
+    border: 1px solid #1e2a5e;
+    color: #fff;
+    font-family: 'DotGothic16', monospace;
+    font-size: 14px;
+    margin-top: 4px;
+  }
+  .modalBody input[type="text"]:focus {
+    outline: none;
+    border-color: #ffe24a;
+  }
+  #registerError, #submitError {
+    color: #ff5566;
+    font-size: 11px;
+    margin-top: 6px;
+    min-height: 14px;
+  }
+  #registerError.ok, #submitError.ok { color: #6eff8a; }
+
+  .clearsList {
+    max-height: 50vh;
+    overflow: auto;
+    font-size: 13px;
+    padding: 4px;
+  }
+  .clearsList .row {
+    margin: 0;
+    padding: 4px 6px;
+    border-bottom: 1px solid #1a2244;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .clearsList .row:last-child { border-bottom: none; }
+  .clearsList .name { color: #ffc3e0; }
+  .clearsList .time { color: #8a93c4; font-size: 11px; }
+  .clearsList .empty { color: #8a93c4; padding: 8px; }
+  .modalFoot {
+    margin-top: 14px;
+    text-align: right;
+  }
+
+  /* これは何？ボタンはステージ選択画面に配置 */
+  button.toggle.on {
+    background: #2a1438;
+    border-color: #ffe24a;
+    color: #ffe24a;
+  }
+
+  /* 復活予告：マスの右上に黄色文字 */
+  .cell .reviveHint {
+    position: absolute;
+    top: 1px; right: 2px;
+    font-family: monospace;
+    font-size: 9px;
+    line-height: 1;
+    color: #ffe24a;
+    text-shadow: 0 0 2px rgba(0,0,0,0.9), 0 0 4px rgba(255,200,0,0.6);
+    z-index: 3;
+    pointer-events: none;
+    font-weight: bold;
+  }
+  .cell.warn {
+    position: relative;
+  }
+  .cell.warn::after {
+    content: '';
+    position: absolute; inset: 2px;
+    background: rgba(255, 85, 102, 0.25);
+    border: 1px dashed #ff5566;
+    animation: warnPulse 0.5s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 2;
+  }
+  @keyframes warnPulse {
+    from { opacity: 0.3; }
+    to   { opacity: 0.95; }
+  }
+
+  /* プレイヤー（独立div） */
+  #player {
+    position: absolute;
+    width: calc(100% / 12); height: calc(100% / 12);
+    left: 0; top: 0;
+    z-index: 5;
+    pointer-events: none;
+    transition: left 0.08s linear, top 0.08s linear;
+  }
+  /* 体（ピンクの丸） */
+  #player::before {
+    content: '';
+    position: absolute; inset: 18%;
+    background:
+      radial-gradient(circle at 35% 25%,
+        #fff 0%,
+        #ffd6e8 15%,
+        #ff8fcf 45%,
+        #d92f93 80%,
+        #7a1858 100%);
+    border-radius: 50%;
+    box-shadow:
+      inset -2px -3px 4px rgba(140,30,90,0.5),
+      inset 2px 2px 3px rgba(255,255,255,0.4);
+  }
+  #player::after, .fairy-wings { display: none; }
+
+  .row { margin: 8px 0; display: flex; gap: 6px; flex-wrap: wrap; }
+  button {
+    font-family: 'DotGothic16', monospace;
+    font-size: 13px;
+    letter-spacing: 1px;
+    padding: 9px 14px;
+    background: #12194a;
+    color: #e9ecff;
+    border: 1px solid #1e2a5e;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-appearance: none;
+    appearance: none;
+    box-shadow: inset 1px 1px 0 rgba(255,255,255,0.06), inset -1px -1px 0 rgba(0,0,0,0.4);
+  }
+  button:active { background: #1e2a5e; transform: translate(1px, 1px); }
+  button:disabled {
+    color: #4a527a;
+    border-color: #1a2244;
+    background: #0a0e2a;
+    cursor: default;
+  }
+  button:disabled:active { transform: none; background: #0a0e2a; }
+
+  /* UNDOボタンのゲージ：左から --undo-fill ぶんがグレーで覆われる */
+  #btnUndo {
+    position: relative;
+    overflow: hidden;
+    --undo-fill: 0%;
+  }
+  #btnUndo::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: var(--undo-fill);
+    background: rgba(40,46,80,0.85);
+    pointer-events: none;
+    transition: width 0.15s ease-out;
+    z-index: 0;
+  }
+  #btnUndo > * { position: relative; z-index: 1; }
+
+  .hud {
+    display: flex;
+    gap: 14px;
+    font-size: 14px;
+    margin: 6px 0 10px;
+    padding: 6px 10px;
+    background: rgba(5,8,28,0.5);
+    border: 1px solid #1e2a5e;
+    width: fit-content;
+  }
+  .hud span { color: #8a93c4; }
+  .hud .v2 {
+    color: #ffe24a;
+    min-width: 28px;
+    display: inline-block;
+  }
+  .hud .v2.pearl { color: #b9e8ff; }
+  .hud .v2.stage { color: #6eff8a; }
+  .hud #hState { color: #ff6ec7; }
+
+  /* 画面切替 */
+  .screen { display: block; }
+  .screen.hidden { display: none !important; }
+
+  /* ステージ選択画面 */
+  .selectTitle {
+    font-family: 'DotGothic16', monospace;
+    font-size: 22px;
+    color: #ff6ec7;
+    letter-spacing: 4px;
+    margin: 14px 0 18px;
+  }
+  #stageGrid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    width: min(94vw, 500px);
+  }
+  .stageBtn {
+    font-family: 'DotGothic16', monospace;
+    font-size: 18px;
+    padding: 18px 0;
+    background: #12194a;
+    color: #e9ecff;
+    border: 1px solid #1e2a5e;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-appearance: none;
+    appearance: none;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.06),
+      inset -1px -1px 0 rgba(0,0,0,0.4);
+    position: relative;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stageBtn:active {
+    background: #1e2a5e;
+    transform: translate(1px, 1px);
+  }
+  .stageBtn .num {
+    font-size: 26px;
+    color: #ffe24a;
+    line-height: 1;
+  }
+  .stageBtn .status {
+    font-size: 10px;
+    color: #8a93c4;
+    letter-spacing: 1px;
+  }
+  .stageBtn .clearN {
+    font-size: 9px;
+    color: #8a93c4;
+    letter-spacing: 0;
+    margin-top: 2px;
+  }
+  .stageBtn.cleared .clearN { color: #c7ff9a; }
+  .stageBtn.cleared {
+    border-color: #6eff8a;
+    background: #0e2a18;
+  }
+  .stageBtn.cleared .num { color: #6eff8a; }
+  .stageBtn.cleared .status { color: #c7ff9a; }
+  .stageBtn.cleared::before {
+    content: '✓';
+    position: absolute;
+    top: 4px; right: 6px;
+    color: #6eff8a;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .selectTitle.subtitle {
+    font-size: 16px;
+    margin-top: 24px;
+    color: #b9e8ff;
+    letter-spacing: 2px;
+  }
+  #userStageGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    width: min(94vw, 500px);
+  }
+  .stageBtn.userStage {
+    aspect-ratio: auto;
+    padding: 10px 8px;
+    text-align: left;
+    align-items: flex-start;
+  }
+  .stageBtn.userStage .num {
+    font-size: 14px;
+    color: #ffe24a;
+    text-align: left;
+    word-break: break-all;
+    width: 100%;
+  }
+  .stageBtn.userStage .status {
+    font-size: 10px;
+    text-align: left;
+    width: 100%;
+    word-break: break-all;
+  }
+
+  #userStagesPanel.hidden { display: none; }
+  #modeBtn {
+    font-family: monospace;
+    font-size: 12px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    background: transparent;
+    color: #6eff8a;
+    border: 1px solid #1e2a5e;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* エディタ */
+  #editBoardWrap {
+    width: min(94vw, 500px);
+    aspect-ratio: 1 / 1;
+    position: relative;
+    border: 2px solid #1e2a5e;
+    background: #05081c;
+    touch-action: none;
+  }
+  #editBoard {
+    position: absolute; inset: 0;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(12, 1fr);
+  }
+  .ecell {
+    border-right: 1px solid #1e2a5e;
+    border-bottom: 1px solid #1e2a5e;
+    position: relative;
+    cursor: pointer;
+  }
+  .ecell:nth-child(12n) { border-right: none; }
+  .ecell:nth-child(n+133) { border-bottom: none; }
+
+  #palette {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    width: min(94vw, 500px);
+    margin-top: 8px;
+  }
+  .pal {
+    font-family: monospace;
+    font-size: 16px;
+    padding: 8px 0;
+    background: #12194a;
+    color: #e9ecff;
+    border: 1px solid #1e2a5e;
+    cursor: pointer;
+    text-align: center;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .pal.active {
+    border-color: #6eff8a;
+    color: #6eff8a;
+  }
+  .pal .lab {
+    display: block;
+    font-size: 9px;
+    color: #8a93c4;
+    margin-top: 2px;
+  }
+  .pal.active .lab { color: #6eff8a; }
+
+  #stageTextPanel {
+    width: min(94vw, 500px);
+    margin-top: 8px;
+    border: 1px solid #1e2a5e;
+    background: rgba(5,8,28,0.6);
+    padding: 6px 8px;
+  }
+  #stageTextOut {
+    width: 100%;
+    height: 130px;
+    background: #02030a;
+    color: #6eff8a;
+    border: 1px solid #1e2a5e;
+    font-family: monospace;
+    font-size: 13px;
+    line-height: 1.1;
+    letter-spacing: 1px;
+    padding: 6px;
+    white-space: pre;
+    overflow: auto;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  #stageTextOut[contenteditable="true"] {
+    color: #ffe24a;
+    border-color: #ffe24a;
+    outline: none;
+  }
+  #stageTextError {
+    color: #ff5566;
+    font-size: 11px;
+    min-height: 14px;
+    margin-top: 4px;
+    font-family: monospace;
+  }
+  #stageTextError.ok { color: #6eff8a; }
+
+  #checkResult {
+    width: min(94vw, 500px);
+    margin-top: 8px;
+    padding: 6px 8px;
+    background: rgba(5,8,28,0.6);
+    border: 1px solid #1e2a5e;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    min-height: 20px;
+  }
+  #checkResult .ok { color: #6eff8a; }
+  #checkResult .ng { color: #ff5566; }
+  #checkResult .warn { color: #ffe24a; }
+  #checkResult .line::before { content: '▸ '; color: #8a93c4; }
+
+  /* 進行表示 */
+  #progressBox {
+    width: min(94vw, 500px);
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: rgba(5,8,28,0.6);
+    border: 1px solid #1e2a5e;
+    font-size: 13px;
+    line-height: 1.5;
+    display: none;
+  }
+  #progressBox.show { display: block; }
+  #progressBox.clear { border-color: #6eff8a; color: #c7ff9a; }
+  #progressBox.allclear { border-color: #ff6ec7; color: #ffc3e0; }
+  #progressBox .title { font-size: 16px; margin-bottom: 6px; letter-spacing: 1px; }
+  #progressBox .row2 { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* MOVE LOG */
+  #moveLogPanel {
+    width: min(94vw, 500px);
+    margin-top: 10px;
+    border: 1px solid #1e2a5e;
+    background: rgba(5,8,28,0.6);
+    padding: 6px 8px;
+  }
+  .mlpHead {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: #ff6ec7;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .mlpHead button {
+    font-family: 'DotGothic16', monospace;
+    font-size: 11px;
+    background: transparent;
+    border: 1px solid #1e2a5e;
+    color: #8a93c4;
+    padding: 2px 8px;
+    box-shadow: none;
+  }
+  .mlpHead button + button { margin-left: 4px; }
+  #moveLogText {
+    width: 100%;
+    min-height: 60px;
+    max-height: 120px;
+    overflow: auto;
+    color: #ffc3e0;
+    font-family: monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    letter-spacing: 1px;
+    padding: 4px 6px;
+    word-break: break-all;
+    user-select: text;
+    -webkit-user-select: text;
+    border: 1px solid transparent;
+    outline: none;
+  }
+  #moveLogText[contenteditable="true"] {
+    background: #02030a;
+    border-color: #ffe24a;
+    color: #fff;
+    cursor: text;
+  }
+  #mlError {
+    margin-top: 4px;
+    color: #ff5566;
+    font-size: 11px;
+    min-height: 14px;
+  }
+  #mlError.ok { color: #6eff8a; }
+</style>
+</head>
+<body>
+
+<h1>Pink Virus</h1>
+<div class="v">build minimal-61</div>
+
+<div id="aboutModal" class="modal hidden">
+  <div class="modalBg"></div>
+  <div class="modalBox">
+    <div class="modalTitle">PINK VIRUS について</div>
+    <div class="modalBody">
+      <p>15年以上前に閉鎖してしまったパズル投稿サイトにあったパズルゲームを再現したものです。</p>
+      <p>パズルのルールはフライパン職人によるものではありません。ステージデータはフライパンによるものです(が、ステージ3、4、6は当時存在した有名問を記憶から復元して収録しています)。</p>
+      <p>ピンクのキャラクターを操作して、すべての珠を集めたら現れるゴールに到達するとクリアです。<br>キャラクターは重力に従って移動します。上移動はハシゴがある場所でのみ可能です。</p>
+      <p>キャラクターの右下か左下にある通常ブロックは掘ることができます。<br>固定ブロックは掘れません。また、ブロックの上にブロックがある場合も掘れません。</p>
+      <p>同時に掘れるブロックは5つのため、それ以上のブロックを掘るとブロックは順番に復活します。</p>
+    </div>
+    <div class="modalFoot">
+      <button id="btnAboutClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- クリア者登録ダイアログ -->
+<div id="registerModal" class="modal hidden">
+  <div class="modalBg"></div>
+  <div class="modalBox">
+    <div class="modalTitle">クリア記録を登録</div>
+    <div class="modalBody">
+      <p>名前（20文字以内）を入力すると、クリア者一覧に登録されます。スキップしても構いません。</p>
+      <input type="text" id="registerName" maxlength="20" placeholder="名前" autocomplete="off">
+      <div id="registerError"></div>
+    </div>
+    <div class="modalFoot">
+      <button id="btnRegisterSkip">スキップ</button>
+      <button id="btnRegisterSubmit">登録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- クリア者一覧モーダル -->
+<div id="clearsModal" class="modal hidden">
+  <div class="modalBg"></div>
+  <div class="modalBox">
+    <div class="modalTitle" id="clearsTitle">クリア者一覧</div>
+    <div class="modalBody">
+      <div id="clearsList" class="clearsList">読み込み中...</div>
+    </div>
+    <div class="modalFoot">
+      <button id="btnClearsClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- エディタ解禁説明モーダル -->
+<div id="unlockModal" class="modal hidden">
+  <div class="modalBg"></div>
+  <div class="modalBox">
+    <div class="modalTitle">エディタ解禁</div>
+    <div class="modalBody">
+      <p>5問以上クリアしたためエディタ機能と投稿ステージプレイ機能が解禁されました。</p>
+      <p>ステージを作成して、テストプレイしてクリアすることで問題を投稿することができます。</p>
+      <p>作者自身でクリアできない問題は投稿できません。</p>
+    </div>
+    <div class="modalFoot">
+      <button id="btnUnlockClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 全消去確認モーダル -->
+<div id="confirmClearModal" class="modal hidden">
+  <div class="modalBg"></div>
+  <div class="modalBox">
+    <div class="modalTitle">全消去</div>
+    <div class="modalBody">
+      <p>本当に削除しますか？</p>
+    </div>
+    <div class="modalFoot">
+      <button id="btnConfirmClearNo">NO</button>
+      <button id="btnConfirmClearYes">YES</button>
+    </div>
+  </div>
+</div>
+
+<!-- ステージ投稿ダイアログ -->
+<div id="submitModal" class="modal hidden">
+  <div class="modalBg"></div>
+  <div class="modalBox">
+    <div class="modalTitle">ステージを投稿</div>
+    <div class="modalBody">
+      <p>テストプレイで実際にクリアできることを確認したステージを投稿できます。</p>
+      <label>制作者名（20文字以内）<input type="text" id="submitAuthor" maxlength="20" autocomplete="off"></label>
+      <label>ステージタイトル（20文字以内）<input type="text" id="submitTitle" maxlength="20" autocomplete="off"></label>
+      <div id="submitError"></div>
+    </div>
+    <div class="modalFoot">
+      <button id="btnSubmitCancel">キャンセル</button>
+      <button id="btnSubmitSubmit">投稿する</button>
+    </div>
+  </div>
+</div>
+
+<div id="selectScreen" class="screen">
+  <div class="selectTitle">ステージ選択</div>
+  <div id="stageGrid"></div>
+  <div id="userStagesPanel" class="hidden">
+    <div class="selectTitle subtitle">投稿ステージ</div>
+    <div id="userStageGrid"></div>
+  </div>
+  <div class="row" style="margin-top: 16px;">
+    <button id="btnAbout">説明</button>
+    <button id="btnUnlockHelp" style="display:none;">説明2</button>
+    <button id="modeBtn" style="display:none;">▶ EDITOR</button>
+  </div>
+</div>
+
+<div id="gameScreen" class="screen hidden">
+  <div class="row">
+    <button id="btnBackToSelect">◀ 選択画面</button>
+  </div>
+  <div class="hud">
+    <span>面 <span class="v2 stage" id="hStage">1/10</span></span>
+    <span>珠 <span class="v2 pearl" id="hPearl">0/0</span></span>
+    <span>掘 <span class="v2" id="hDig">0</span></span>
+    <span>手 <span class="v2" id="hTurn">0</span></span>
+    <span id="hState" class="v2"></span>
+  </div>
+
+  <div id="boardWrap">
+    <div id="board"></div>
+    <div id="player"></div>
+  </div>
+
+  <div class="row">
+    <button id="btnUndo" disabled>↶ UNDO</button>
+    <button id="btnReset">RESET</button>
+    <button id="btnReviveHint" class="toggle">復活予告</button>
+    <button id="btnClearsList" class="hidden">クリア者一覧</button>
+  </div>
+
+  <div id="progressBox"></div>
+
+  <div id="moveLogPanel">
+    <div class="mlpHead">
+      <span>▸ MOVE LOG</span>
+      <span>
+        <button type="button" id="btnInputReplay">INPUT</button>
+        <button type="button" id="btnSlowReplay" class="hidden">SLOW</button>
+        <button type="button" id="btnCopyMove">COPY</button>
+      </span>
+    </div>
+    <div id="moveLogText" contenteditable="false" inputmode="none"></div>
+    <div id="mlError"></div>
+  </div>
+</div>
+
+<div id="editorScreen" class="screen hidden">
+  <div class="row">
+    <button id="btnEditBack">◀ 選択画面</button>
+  </div>
+  <div id="editBoardWrap">
+    <div id="editBoard"></div>
+  </div>
+
+  <div id="palette">
+    <button class="pal" data-tool="★">★<span class="lab">START</span></button>
+    <button class="pal" data-tool="出">出<span class="lab">EXIT</span></button>
+    <button class="pal" data-tool="■">■<span class="lab">BLOCK</span></button>
+    <button class="pal" data-tool="田">田<span class="lab">FIXED</span></button>
+    <button class="pal" data-tool="≡">≡<span class="lab">LADDER</span></button>
+    <button class="pal" data-tool="〜">〜<span class="lab">ROPE</span></button>
+    <button class="pal" data-tool="●">●<span class="lab">PEARL</span></button>
+    <button class="pal" data-tool="□">□<span class="lab">ERASE</span></button>
+  </div>
+
+  <div class="row">
+    <button id="btnCheck">▸ チェック</button>
+    <button id="btnPlayThis">▶ テストプレイ</button>
+    <button id="btnClearBoard">全消去</button>
+  </div>
+
+  <div id="checkResult"></div>
+
+  <div id="stageTextPanel">
+    <div class="mlpHead">
+      <span>▸ BOARD TEXT</span>
+      <span>
+        <button type="button" id="btnInputStage">INPUT</button>
+        <button type="button" id="btnCopyStage">COPY</button>
+      </span>
+    </div>
+    <div id="stageTextOut" contenteditable="false" inputmode="none"></div>
+    <div id="stageTextError"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ============= バックエンドAPI（Google Apps Script Web App） =============
+// GASをデプロイした後、ここに /exec のURLを設定する。空文字ならオンライン機能はOFF。
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwWq6N61upjJ9Wj_Xf_r9geW1FPwScFIlaMgq_WD0PhQYFfRar5EcBnq-pg-fDS35IGFQ/exec';
+const ONLINE_ENABLED = !!GAS_URL;
+
+async function apiGet(action, params) {
+  if (!ONLINE_ENABLED) throw new Error('オンライン機能未設定');
+  const u = new URL(GAS_URL);
+  u.searchParams.set('action', action);
+  if (params) for (const k in params) u.searchParams.set(k, params[k]);
+  const res = await fetch(u.toString(), { method: 'GET' });
+  if (!res.ok) throw new Error('API GET失敗 ' + res.status);
+  return await res.json();
+}
+async function apiPost(action, body) {
+  if (!ONLINE_ENABLED) throw new Error('オンライン機能未設定');
+  // CORSプリフライトを避けるため text/plain で送る（GAS慣例）
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, ...body }),
+  });
+  if (!res.ok) throw new Error('API POST失敗 ' + res.status);
+  return await res.json();
+}
+
+// 入力サニタイズ：先頭の =,+,-,@ など数式文字をエスケープ。長さ制限。
+function sanitizeName(s) {
+  s = String(s || '').trim().slice(0, 20);
+  if (/^[=+\-@]/.test(s)) s = "'" + s;
+  return s;
+}
+function sanitizeTitle(s) {
+  s = String(s || '').trim().slice(0, 20);
+  if (/^[=+\-@]/.test(s)) s = "'" + s;
+  return s;
+}
+
+// URLパラメータでエディタ可否を判定
+const EDITOR_KEY = 'boraqpinkvirus';
+const editorEnabled = (() => {
+  try {
+    const u = new URL(window.location.href);
+    return u.searchParams.get('p') === EDITOR_KEY;
+  } catch (_) { return false; }
+})();
+
+const W = 12, H = 12;
+const T = { EMPTY:'e', BLOCK:'b', FIXED:'f', LADDER:'l', ROPE:'r', PEARL:'p' };
+const REVIVE_DELAY = 5;
+const FALL_TICK_MS = 90;
+
+// 全ステージ（12x12）
+// STAGE_BASE はダミー登録用：右に2マス進めばクリアできる準備中盤面
+const STAGE_BASE = [
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "★●出□□□□□□□□□",
+];
+// ステージ1
+const STAGE_1 = [
+  "●●●□□□□□□■□★",
+  "●■■≡□□□■≡■田■",
+  "●■■≡□□□■≡□□□",
+  "田田田田田田田田田■■■",
+  "■■■□□□□□□■■■",
+  "■■■■■■■≡□■■■",
+  "≡出■■■■■≡□■□●",
+  "≡■■■■■■≡□■□●",
+  "≡■■■■■□≡□■□●",
+  "≡■■■■■田≡□■■≡",
+  "≡■■□■■■≡〜〜■≡",
+  "≡□□□□□■□□□■≡",
+];
+
+// ステージ2
+const STAGE_2 = [
+  "□★□□□□□□□□□●",
+  "■■■□□□□□□≡■■",
+  "■■■■■■■□□≡■■",
+  "■■■■■■■■■■■■",
+  "■■■■■■■□□□□■",
+  "■■■■■■■□□□□■",
+  "出■■■□□□□□□□□",
+  "≡□□□□●□□■■■≡",
+  "≡□≡■■□□■■□□≡",
+  "≡□≡□□□□■■■□≡",
+  "≡□≡□□□□□□●□≡",
+  "≡□□■■□□□□□□≡",
+];
+
+// 旧ステージ3の盤面（4面に格上げ）
+// ステージ6
+const STAGE_6 = [
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "★□□□□□□□□□□□",
+  "出≡■□□□□□□□□□",
+  "■≡■□□□□□□□□□",
+  "■≡■□□□□□□□□□",
+  "■□■≡□□□□□□□□",
+  "□≡■□□□□□□□□□",
+  "□□■≡□□□□□□□□",
+  "■≡■●□□□□□□□□",
+];
+
+// ステージ7
+const STAGE_7 = [
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "★□□□□□□□□□□□",
+  "≡■≡■□□□□□□□□",
+  "≡■■■□□□□□□□□",
+  "≡■□□□□□□□□□□",
+  "≡■□■≡□□□□□□□",
+  "出■■■□■≡□□□□□",
+  "●●●■≡■●●●●●●",
+];
+
+// ステージ3
+const STAGE_3 = [
+  "□□□□□□□■□□□★",
+  "■■■■■■≡■■■■田",
+  "■■■■■■≡■田■■■",
+  "■■■■田■≡□□■■■",
+  "□□□●■■■■■■■■",
+  "□■■■■■≡■□□□□",
+  "■■□□□□≡■■■■■",
+  "□■■■■■□□□≡■■",
+  "■■□□□〜≡■■■■□",
+  "■■■■■〜≡■≡■■■",
+  "●□■■■□□■≡■田■",
+  "■■■□□□□□≡□田出",
+];
+
+// ステージ3用データ（左壁掘り簡素版）
+const STAGE_3_DATA = [
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "★□□□□□□□□□□□",
+  "≡■□□□□□□□□□□",
+  "≡□□□□□□□□□□□",
+  "≡田■田■田■田■田■□",
+  "≡□●□●□●□●□田□",
+  "≡□□□□□□□□□田□",
+  "≡□□□□□□□□□田出",
+];
+
+// ステージ9
+const STAGE_9 = [
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□★□□□□□□□□□□",
+  "□≡■■■■□□□□□□",
+  "□≡■□□■≡□□□□□",
+  "□≡■□□■□□□□□□",
+  "●■■■■■□□□□□出",
+];
+
+// ステージ4
+const STAGE_4 = [
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□□□□□□□≡■□□□",
+  "□≡出□≡■□≡■□□□",
+  "□≡■□≡■□≡■□□□",
+  "★≡■□≡■□≡■□□●",
+];
+
+// ステージ5
+const STAGE_5 = [
+  "□□□□□□□□□□□★",
+  "■■■■■■≡□□□□■",
+  "■■■■■■≡□□□□■",
+  "■■■■田■≡□□□□■",
+  "□□□●■■■■■■■■",
+  "□■■■■■≡■□□□□",
+  "■■□□□□≡■■■■■",
+  "■■■■■■□□□≡■■",
+  "□□□□□□□■■≡■□",
+  "出■□□□□□■■≡■□",
+  "≡■■■■≡□■■≡■●",
+  "≡□■■■≡□□□≡■■",
+];
+
+// ステージ8
+const STAGE_8 = [
+  "★□□□□□□□□□□□",
+  "■■■■□■≡□□■■≡",
+  "□■■■≡□≡■□□□≡",
+  "■■■■■■■■■■■□",
+  "■≡□□□□■≡■≡■■",
+  "■≡■■■□□≡□≡■■",
+  "■≡■□■■■■■■■≡",
+  "■≡□■■■■≡□■□□",
+  "■■≡□□≡■□■≡■■",
+  "●■≡□■□■≡■■■■",
+  "□□≡□■≡□≡■■■■",
+  "■■□■■■■≡□■■出",
+];
+
+// ステージ10
+const STAGE_10 = [
+  "□□□□□□□□□□□□",
+  "□□□□□□□□□□□□",
+  "□≡出□□□□□□□□□",
+  "□≡■□□□□□□□□□",
+  "□≡■□□≡■□□□□□",
+  "□≡■□□≡■□□□□□",
+  "□≡■□□≡■□□□□□",
+  "□≡■□□≡■□□□□□",
+  "□≡■□□≡■□□□□□",
+  "□≡■□□≡■□≡■□□",
+  "□≡■□□≡■□≡■□□",
+  "★≡■□□≡■□≡■□●",
+];
+
+// デフォルトステージ：ID '1'〜'10'
+const DEFAULT_STAGES = {
+  '1': STAGE_1,
+  '2': STAGE_2,
+  '3': STAGE_3_DATA,
+  '4': STAGE_4,
+  '5': STAGE_9,
+  '6': STAGE_6,
+  '7': STAGE_3,
+  '8': STAGE_7,
+  '9': STAGE_8,
+  '10': STAGE_10,
+};
+const DEFAULT_ORDER = ['1','2','3','4','5','6','7','8','9','10'];
+const TOTAL_DEFAULT_STAGES = DEFAULT_ORDER.length;
+
+// 投稿ステージはサーバから取得して保持：{ id, title, author, board[], created_at }
+let userStages = [];        // [{id, title, author, board, ...}, ...]
+let clearCounts = {};       // { stageId: count }
+async function loadClearCounts() {
+  if (!ONLINE_ENABLED) return;
+  try {
+    const data = await apiGet('clearCounts');
+    if (data && data.counts) clearCounts = data.counts;
+  } catch (_) {}
+}
+function getStageBoard(id) {
+  if (id === 'test' && testStageBoard) return testStageBoard;
+  if (DEFAULT_STAGES[id]) return DEFAULT_STAGES[id];
+  const u = userStages.find(s => s.id === id);
+  return u ? u.board : null;
+}
+function getStageMeta(id) {
+  if (DEFAULT_STAGES[id]) return { id, title: 'ステージ' + id, author: '' };
+  return userStages.find(s => s.id === id) || null;
+}
+
+let currentStage = '1';     // ID文字列
+
+// 互換用：STAGE は currentStage に対応
+let STAGE = DEFAULT_STAGES['1'];
+
+// クリア状態管理（localStorage保存）
+const CLEARED_KEY = 'pinkvirus.cleared.v2';
+let clearedSet = (function() {
+  try {
+    const raw = localStorage.getItem(CLEARED_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw));
+  } catch (_) { return new Set(); }
+})();
+function saveCleared() {
+  try {
+    localStorage.setItem(CLEARED_KEY, JSON.stringify([...clearedSet]));
+  } catch (_) {}
+}
+function markStageCleared(id) {
+  id = String(id);
+  if (clearedSet.has(id)) return;
+  clearedSet.add(id);
+  saveCleared();
+}
+function isStageCleared(id) {
+  return clearedSet.has(String(id));
+}
+function defaultClearCount() {
+  let n = 0;
+  for (const id of DEFAULT_ORDER) if (clearedSet.has(id)) n++;
+  return n;
+}
+function isEditorUnlocked() {
+  return defaultClearCount() >= 5;
+}
+
+let grid, isExitCell, exitPos, player;
+let digQueue, digCount, turnCount;
+let pearlsTotal, pearlsLeft;
+let gameState;
+let isBusy = false;
+
+// UNDO/REPLAY：MOVE LOG ベース
+function updateUndoBtn() {
+  const b = document.getElementById('btnUndo');
+  if (!b) return;
+  b.disabled = moveLog.length === 0 || isBusy;
+  b.style.setProperty('--undo-fill', '0%');
+  const ib = document.getElementById('btnInputReplay');
+  if (ib) {
+    if (mlEditing) {
+      ib.disabled = false;
+    } else {
+      ib.disabled = moveLog.length > 0 || isBusy;
+    }
+  }
+  const sb = document.getElementById('btnSlowReplay');
+  if (sb) {
+    sb.disabled = !mlEditing || isBusy;
+  }
+}
+
+// 同期版の整合性チェック（gridを進めて掘削エラーを検出）
+function dryRunMoveLog(entries) {
+  resetStateForReplay();
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (gameState !== 'play') {
+      throw new Error(`エントリ${i+1}: ゲーム状態が play ではありません (${gameState})`);
+    }
+    if (e.kind === 'walk') {
+      simulateWalk(e.x, e.y);
+    } else if (e.kind === 'dig') {
+      const ok = simulateDig(e.side);
+      if (!ok) throw new Error(`エントリ${i+1}: 掘削(${e.side<0?'L':'R'})できません`);
+    } else {
+      throw new Error(`エントリ${i+1}: 不明な種別`);
+    }
+  }
+}
+
+// アニメ付き再生（dryRun成功後に呼ぶ）
+const REPLAY_STEP_MS = 280;     // walk/digエントリ間の間隔（slow基準）
+const REPLAY_WALK_MS = 90;      // 自動歩行内の各マス間隔（slow基準）
+let replayState = null;
+
+function startAnimatedReplay(entries, onDone, speed) {
+  speed = speed || 1.0;
+  resetStateForReplay();
+  render(); updateHUD();
+  isBusy = true;
+  replayState = { entries, idx: 0, onDone, aborted: false, speed };
+  scheduleReplayStep();
+}
+function scheduleReplayStep() {
+  if (!replayState) return;
+  if (replayState.aborted) { replayState = null; isBusy = false; return; }
+  if (replayState.idx >= replayState.entries.length) {
+    const done = replayState.onDone;
+    replayState = null;
+    isBusy = false;
+    if (done) done();
+    return;
+  }
+  const e = replayState.entries[replayState.idx++];
+  const next = replayState.entries[replayState.idx];
+  const involvesDig = (e.kind === 'dig') || (next && next.kind === 'dig');
+  const wait = involvesDig ? Math.round(REPLAY_STEP_MS / replayState.speed) : 0;
+  if (e.kind === 'dig') {
+    simulateDig(e.side);
+    render(); updateHUD();
+    setTimeout(scheduleReplayStep, wait);
+  } else if (e.kind === 'walk') {
+    animatedWalk(e.x, e.y, () => {
+      setTimeout(scheduleReplayStep, wait);
+    });
+  } else {
+    setTimeout(scheduleReplayStep, wait);
+  }
+}
+function animatedWalk(tx, ty, done) {
+  const stepMs = replayState ? Math.round(REPLAY_WALK_MS / replayState.speed) : REPLAY_WALK_MS;
+  function step() {
+    if (!replayState || replayState.aborted) return;
+    if (gameState !== 'play') { done(); return; }
+    if (player.x === tx && player.y === ty) { done(); return; }
+    const bx = player.x, by = player.y;
+    let moved = false;
+    if (ty !== player.y) {
+      const sy = ty > player.y ? 1 : -1;
+      if (simulateMove(0, sy) && (player.x !== bx || player.y !== by)) moved = true;
+    }
+    if (!moved && tx !== player.x) {
+      const sx = tx > player.x ? 1 : -1;
+      if (simulateMove(sx, 0) && (player.x !== bx || player.y !== by)) moved = true;
+    }
+    render(); updateHUD();
+    if (!moved) { done(); return; }
+    setTimeout(step, stepMs);
+  }
+  step();
+}
+
+// 状態だけ初期化（renderはしない、moveLog保持）
+function resetStateForReplay() {
+  STAGE = getStageBoard(currentStage);
+  grid = []; isExitCell = [];
+  for (let y = 0; y < H; y++) {
+    grid.push(new Array(W).fill(T.EMPTY));
+    isExitCell.push(new Array(W).fill(false));
+  }
+  pearlsTotal = 0;
+  for (let y = 0; y < H; y++) {
+    const row = [...STAGE[y]];
+    for (let x = 0; x < W; x++) {
+      const ch = row[x];
+      switch (ch) {
+        case '★': grid[y][x] = T.EMPTY; player = {x, y}; break;
+        case '■': grid[y][x] = T.BLOCK; break;
+        case '田': grid[y][x] = T.FIXED; break;
+        case '≡': grid[y][x] = T.LADDER; break;
+        case '〜': case '~': grid[y][x] = T.ROPE; break;
+        case '●': grid[y][x] = T.PEARL; pearlsTotal++; break;
+        case '出': grid[y][x] = T.BLOCK; isExitCell[y][x] = true; exitPos = {x, y}; break;
+        default:  grid[y][x] = T.EMPTY;
+      }
+    }
+  }
+  pearlsLeft = pearlsTotal;
+  digQueue = []; digCount = 0; turnCount = 0;
+  gameState = 'play'; isBusy = false; fallCounter = 0;
+}
+
+// 同期版のwalk/dig：アニメなし、即座に状態を進める
+function simulateGravity() {
+  // 足場無しなら下まで一気に落とす
+  while (!hasFooting(player.x, player.y)) {
+    const ny = player.y + 1;
+    if (ny < H && canEnter(player.x, ny)) {
+      player.y = ny;
+      collectPearl();
+    } else break;
+  }
+}
+function simulateMove(dx, dy) {
+  if (gameState !== 'play') return false;
+  if (!tryMove(dx, dy)) return false;
+  turnCount++;
+  collectPearl();
+  simulateGravity();
+  syncCheckEnd();
+  return true;
+}
+function simulateDig(side) {
+  if (gameState !== 'play') return false;
+  if (!tryDig(side)) return false;
+  reviveIfDue();
+  turnCount++;
+  collectPearl();
+  simulateGravity();
+  syncCheckEnd();
+  return true;
+}
+function simulateWalk(tx, ty) {
+  // 同期版自動歩行：縦→横の順で進めて到達 or ブロックまで
+  if (player.x === tx && player.y === ty) return false; // 同位置タップは無効
+  let safety = W * H * 4;
+  while (safety-- > 0) {
+    if (gameState !== 'play') break;
+    if (player.x === tx && player.y === ty) return true;
+    const bx = player.x, by = player.y;
+    let moved = false;
+    if (ty !== player.y) {
+      const sy = ty > player.y ? 1 : -1;
+      if (simulateMove(0, sy) && (player.x !== bx || player.y !== by)) moved = true;
+    }
+    if (!moved && tx !== player.x) {
+      const sx = tx > player.x ? 1 : -1;
+      if (simulateMove(sx, 0) && (player.x !== bx || player.y !== by)) moved = true;
+    }
+    if (!moved) return false; // 進めなかった
+  }
+  return true;
+}
+function syncCheckEnd() {
+  if (gameState !== 'play') return;
+  if (isExitRevealed() && player.x === exitPos.x && player.y === exitPos.y) {
+    gameState = 'clear'; return;
+  }
+  if (cellType(player.x, player.y) !== T.LADDER) {
+    const chk = (x, y) => {
+      if (!inBounds(x, y)) return true;
+      const t = grid[y][x];
+      if (t === T.FIXED) return true;
+      if (t === T.BLOCK) {
+        if (isExitCell[y][x] && isExitRevealed()) return false;
+        return true;
+      }
+      return false;
+    };
+    if (chk(player.x-1, player.y) && chk(player.x+1, player.y) && chk(player.x, player.y+1)) {
+      gameState = 'stuck';
+    }
+  }
+}
+
+// MOVE LOG（クリック/入力ベース）
+// エントリ：{ kind: 'walk', x, y } | { kind: 'dig', side: -1|1 }
+let moveLog = [];
+let fallCounter = 0; // 表示中だけ使う
+let mlEditing = false;
+
+function mlPushWalk(x, y) {
+  moveLog.push({ kind: 'walk', x, y });
+  renderMoveLog();
+}
+function mlPushDig(side) {
+  moveLog.push({ kind: 'dig', side });
+  renderMoveLog();
+}
+
+// 座標を1文字に：0-9 はそのまま、10='a', 11='b'
+function n2c(n) { return n < 10 ? String(n) : String.fromCharCode('a'.charCodeAt(0) + (n - 10)); }
+function c2n(c) {
+  if (c >= '0' && c <= '9') return c.charCodeAt(0) - '0'.charCodeAt(0);
+  const lc = c.toLowerCase();
+  if (lc >= 'a' && lc <= 'z') return 10 + lc.charCodeAt(0) - 'a'.charCodeAt(0);
+  return -1;
+}
+
+function fmtEntry(e) {
+  if (e.kind === 'walk') return n2c(e.x) + n2c(e.y);
+  if (e.kind === 'dig')  return e.side < 0 ? 'L' : 'R';
+  return '?';
+}
+
+function renderMoveLog() {
+  // walk2個ごと（=4文字）またはdigで区切って読みやすく
+  const tokens = moveLog.map(fmtEntry);
+  // 8トークンごとに改行
+  const chunks = [];
+  for (let i = 0; i < tokens.length; i += 8) {
+    chunks.push(tokens.slice(i, i + 8).join(' '));
+  }
+  const el = document.getElementById('moveLogText');
+  if (el && !mlEditing) {
+    el.textContent = chunks.join('\n');
+    el.scrollTop = el.scrollHeight;
+  }
+}
+
+// パース：コンパクト表記 → moveLog エントリ配列
+// 文字列を1文字ずつ走査。R/L は掘削、それ以外で[0-9a-z]が来たら2文字を座標として読む
+function parseMoveLog(text) {
+  const out = [];
+  const s = text.replace(/\s+/g, ''); // 空白・改行・タブを全部除去
+  let i = 0;
+  while (i < s.length) {
+    const c = s[i];
+    if (c === 'R') { out.push({ kind: 'dig', side: 1 }); i++; continue; }
+    if (c === 'L') { out.push({ kind: 'dig', side: -1 }); i++; continue; }
+    // 既存の◣◢も受け付け（互換）
+    if (c === '◣') { out.push({ kind: 'dig', side: -1 }); i++; continue; }
+    if (c === '◢') { out.push({ kind: 'dig', side: 1 }); i++; continue; }
+    // 既存の(x,y)も受け付け（互換）
+    if (c === '(') {
+      const m = /^\(\s*(\d+)\s*,\s*(\d+)\s*\)/.exec(s.slice(i));
+      if (m) { out.push({ kind: 'walk', x: +m[1], y: +m[2] }); i += m[0].length; continue; }
+      throw new Error(`位置 ${i+1}: 座標の括弧が閉じていません`);
+    }
+    // 2文字で座標
+    const x = c2n(c);
+    if (x < 0) throw new Error(`位置 ${i+1}: 不明な文字 '${c}'`);
+    if (i + 1 >= s.length) throw new Error(`位置 ${i+1}: 座標の y が足りません`);
+    const y = c2n(s[i+1]);
+    if (y < 0) throw new Error(`位置 ${i+2}: 不明な文字 '${s[i+1]}'`);
+    out.push({ kind: 'walk', x, y });
+    i += 2;
+  }
+  return out;
+}
+
+function dbg(_tag, _info) {} // no-op（表示用ログは廃止）
+
+function initStage() {
+  STAGE = getStageBoard(currentStage);
+  if (!STAGE) {
+    // データが見つからない場合はステージ1へフォールバック
+    currentStage = '1';
+    STAGE = DEFAULT_STAGES['1'];
+  }
+  grid = []; isExitCell = [];
+  for (let y = 0; y < H; y++) {
+    grid.push(new Array(W).fill(T.EMPTY));
+    isExitCell.push(new Array(W).fill(false));
+  }
+  pearlsTotal = 0;
+  for (let y = 0; y < H; y++) {
+    const row = [...STAGE[y]];
+    for (let x = 0; x < W; x++) {
+      const ch = row[x];
+      switch (ch) {
+        case '★': grid[y][x] = T.EMPTY; player = {x, y}; break;
+        case '■': grid[y][x] = T.BLOCK; break;
+        case '田': grid[y][x] = T.FIXED; break;
+        case '≡': grid[y][x] = T.LADDER; break;
+        case '〜': case '～': grid[y][x] = T.ROPE; break;
+        case '●': grid[y][x] = T.PEARL; pearlsTotal++; break;
+        case '出': grid[y][x] = T.BLOCK; isExitCell[y][x] = true; exitPos = {x, y}; break;
+        default:  grid[y][x] = T.EMPTY;
+      }
+    }
+  }
+  pearlsLeft = pearlsTotal;
+  digQueue = []; digCount = 0; turnCount = 0;
+  gameState = 'play'; isBusy = false;
+  moveLog = []; fallCounter = 0;
+  mlEditing = false;
+  // testPlayMode は applyEditorAndPlay 等の呼び出し側で制御するためここでは触らない
+  renderMoveLog();
+  render(); updateHUD();
+  updateUndoBtn();
+  document.getElementById('hState').textContent = '';
+  // HUD表示：デフォルト面なら "N/10"、 投稿面なら "投稿:タイトル" 等
+  const hStageEl = document.getElementById('hStage');
+  if (DEFAULT_STAGES[currentStage]) {
+    hStageEl.textContent = currentStage + '/' + TOTAL_DEFAULT_STAGES;
+  } else {
+    const meta = getStageMeta(currentStage);
+    hStageEl.textContent = '投稿:' + (meta ? meta.title : '?');
+  }
+  updateProgressUI();
+  updateClearsListBtn();
+  // テストプレイ時は戻るボタンを「エディタへ」に
+  const backBtn = document.getElementById('btnBackToSelect');
+  if (backBtn) backBtn.textContent = testPlayMode ? '◀ エディタ' : '◀ 選択画面';
+}
+
+function updateClearsListBtn() {
+  const b = document.getElementById('btnClearsList');
+  if (!b) return;
+  if (!ONLINE_ENABLED || testPlayMode) {
+    b.classList.add('hidden');
+    return;
+  }
+  b.classList.remove('hidden');
+  const n = clearCounts[currentStage] || 0;
+  b.textContent = `クリア者一覧(${n}名)`;
+}
+
+let testPlayMode = false; // エディタからのテストプレイ中フラグ
+
+function inBounds(x, y) { return x >= 0 && x < W && y >= 0 && y < H; }
+function cellType(x, y) { return inBounds(x, y) ? grid[y][x] : null; }
+function isExitRevealed() { return pearlsLeft === 0; }
+function hasFooting(x, y) {
+  if (cellType(x, y) === T.LADDER) return true;
+  if (cellType(x, y) === T.ROPE) return true;
+  // 判明済み出口セル上にいる時は常に足場あり（落下せずクリア判定へ）
+  if (inBounds(x, y) && isExitCell[y][x] && isExitRevealed()) return true;
+  const b = cellType(x, y + 1);
+  if (b === T.BLOCK || b === T.FIXED || b === T.LADDER) return true;
+  if (y + 1 >= H) return true;
+  return false;
+}
+function canEnter(x, y) {
+  if (!inBounds(x, y)) return false;
+  const t = grid[y][x];
+  if (t === T.EMPTY || t === T.LADDER || t === T.ROPE || t === T.PEARL) return true;
+  if (t === T.BLOCK && isExitCell[y][x] && isExitRevealed()) return true;
+  return false;
+}
+
+function tryMove(dx, dy) {
+  const nx = player.x + dx;
+  const ny = player.y + dy;
+  if (dy !== 0 && dx === 0) {
+    const here = cellType(player.x, player.y);
+    const dest = cellType(nx, ny);
+    if (dy < 0) { if (here !== T.LADDER) return false; }
+    else {
+      // 下移動：現在地がハシゴ/ロープ、移動先がハシゴ、もしくは移動先が判明済み出口ならOK
+      const destIsExit = inBounds(nx, ny) && isExitCell[ny][nx] && isExitRevealed();
+      if (here !== T.LADDER && here !== T.ROPE && dest !== T.LADDER && !destIsExit) return false;
+    }
+  }
+  if (!canEnter(nx, ny)) return false;
+  player.x = nx; player.y = ny;
+  return true;
+}
+function tryDig(side) {
+  const tx = player.x + side, ty = player.y + 1;
+  if (!inBounds(tx, ty)) return false;
+  if (grid[ty][tx] !== T.BLOCK) return false;
+  if (isExitCell[ty][tx] && isExitRevealed()) return false;
+  if (inBounds(tx, ty - 1)) {
+    const a = grid[ty - 1][tx];
+    if (a === T.FIXED || a === T.BLOCK) return false;
+  }
+  grid[ty][tx] = T.EMPTY;
+  digCount++;
+  digQueue.push({ x: tx, y: ty, turnDug: digCount });
+  return true;
+}
+function reviveIfDue() {
+  while (digQueue.length > 0 && digQueue[0].turnDug + REVIVE_DELAY <= digCount) {
+    const d = digQueue.shift();
+    grid[d.y][d.x] = T.BLOCK;
+    if (player.x === d.x && player.y === d.y) gameState = 'dead';
+  }
+}
+function collectPearl() {
+  if (cellType(player.x, player.y) === T.PEARL) {
+    grid[player.y][player.x] = T.EMPTY;
+    pearlsLeft--;
+    // 全珠取得した瞬間：出口セルが掘られていれば強制復活
+    if (pearlsLeft === 0 && exitPos) {
+      const ex = exitPos.x, ey = exitPos.y;
+      if (grid[ey][ex] !== T.BLOCK) {
+        grid[ey][ex] = T.BLOCK;
+      }
+      // 出口セルが復活キューに残っていれば取り除く（次の復活時に何も起きない扱い）
+      digQueue = digQueue.filter(d => !(d.x === ex && d.y === ey));
+    }
+  }
+}
+
+function act(fn, tag, opts) {
+  if (gameState !== 'play' || isBusy) return;
+  opts = opts || {};
+  if (!fn()) return;
+  turnCount++;
+  if (tag) dbg('ACT', tag);
+  collectPearl();
+  updateHUD(); render();
+  updateUndoBtn();
+  if (!hasFooting(player.x, player.y)) {
+    isBusy = true;
+    fallLoop();
+  } else {
+    checkEnd();
+  }
+}
+function fallLoop() {
+  if (hasFooting(player.x, player.y)) {
+    fallCounter = 0;
+    isBusy = false;
+    updateHUD(); render(); checkEnd();
+    return;
+  }
+  const ny = player.y + 1;
+  if (ny < H && canEnter(player.x, ny)) {
+    player.y = ny;
+    fallCounter++;
+    collectPearl();
+    updateHUD(); render();
+    setTimeout(fallLoop, FALL_TICK_MS);
+  } else {
+    fallCounter = 0;
+    isBusy = false;
+    updateHUD(); render(); checkEnd();
+  }
+}
+
+function doMove(dx, dy, opts) {
+  const before = { x: player.x, y: player.y };
+  act(() => tryMove(dx, dy), `move ${dx},${dy}`, opts);
+  if (player.x !== before.x || player.y !== before.y) {
+    // 自動歩行中はスキップ（autoWalkTo の開始時に walk(tx,ty) が1個 push される）
+    if (!opts || !opts.skipMlPush) {
+      mlPushWalk(player.x, player.y);
+    }
+  }
+}
+function doDig(side, opts) {
+  const before = digCount;
+  act(() => { const ok = tryDig(side); if (ok) reviveIfDue(); return ok; }, `dig ${side}`, opts);
+  if (digCount > before) {
+    if (!opts || !opts.skipMlPush) {
+      mlPushDig(side);
+    }
+  }
+}
+
+// 自動歩行
+const AUTO_STEP_MS = 75;
+let autoWalking = false;
+function autoWalkTo(tx, ty) {
+  if (autoWalking) return;
+  if (gameState !== 'play' || isBusy) return;
+  if (player.x === tx && player.y === ty) return;
+  // タップ目標座標を1エントリで記録
+  mlPushWalk(tx, ty);
+  autoWalking = true;
+  dbg('AUTO', `→(${tx},${ty})`);
+  function step() {
+    if (gameState !== 'play') { autoWalking = false; return; }
+    if (isBusy) { setTimeout(step, AUTO_STEP_MS); return; }
+    if (player.x === tx && player.y === ty) {
+      autoWalking = false;
+      dbg('AUTO', 'arrived');
+      return;
+    }
+    const bx = player.x, by = player.y;
+    let moved = false;
+    if (ty !== player.y) {
+      const sy = ty > player.y ? 1 : -1;
+      doMove(0, sy, { skipMlPush: true });
+      if (player.x !== bx || player.y !== by) moved = true;
+    }
+    if (!moved && tx !== player.x) {
+      const sx = tx > player.x ? 1 : -1;
+      doMove(sx, 0, { skipMlPush: true });
+      if (player.x !== bx || player.y !== by) moved = true;
+    }
+    if (!moved) {
+      autoWalking = false;
+      dbg('AUTO', 'blocked');
+      return;
+    }
+    setTimeout(step, AUTO_STEP_MS);
+  }
+  step();
+}
+
+function checkEnd() {
+  if (gameState !== 'play') { showState(); return; }
+  if (isExitRevealed() && player.x === exitPos.x && player.y === exitPos.y) {
+    gameState = 'clear'; showState(); return;
+  }
+  if (cellType(player.x, player.y) !== T.LADDER) {
+    const chk = (x, y) => {
+      if (!inBounds(x, y)) return true;
+      const t = grid[y][x];
+      if (t === T.FIXED) return true;
+      if (t === T.BLOCK) {
+        if (isExitCell[y][x] && isExitRevealed()) return false;
+        return true;
+      }
+      return false;
+    };
+    if (chk(player.x-1, player.y) && chk(player.x+1, player.y) && chk(player.x, player.y+1)) {
+      gameState = 'stuck'; showState();
+    }
+  }
+}
+function showState() {
+  const el = document.getElementById('hState');
+  if (gameState === 'clear') el.textContent = '★ CLEAR!';
+  else if (gameState === 'dead') el.textContent = '✝ 生き埋め';
+  else if (gameState === 'stuck') el.textContent = '× ありゃりゃ。。';
+  updateProgressUI();
+  dbg('END', gameState);
+}
+
+function updateProgressUI() {
+  const box = document.getElementById('progressBox');
+  if (!box) return;
+  box.className = '';
+  box.innerHTML = '';
+  if (gameState === 'play') {
+    box.classList.remove('show');
+    return;
+  }
+  if (gameState === 'clear') {
+    if (testPlayMode) {
+      // テストプレイクリア → 投稿可能
+      box.classList.add('show', 'clear');
+      box.innerHTML = `
+        <div class="title">★ テストプレイ CLEAR!</div>
+        <div>クリア確認できました。 投稿できます。</div>
+        <div class="row2">
+          <button id="btnSubmitOpen">▶ ステージを投稿</button>
+          <button id="btnBackEdit">◀ エディタに戻る</button>
+        </div>`;
+      document.getElementById('btnSubmitOpen').addEventListener('click', openSubmitDialog);
+      document.getElementById('btnBackEdit').addEventListener('click', () => {
+        testPlayMode = false;
+        switchScreen('editor');
+      });
+    } else {
+      const wasFirstClear = !isStageCleared(currentStage);
+      markStageCleared(currentStage);
+      const stageLabel = DEFAULT_STAGES[currentStage]
+        ? 'ステージ' + currentStage
+        : (getStageMeta(currentStage)?.title || '投稿ステージ');
+      box.classList.add('show', 'clear');
+      const onlineButtons = ONLINE_ENABLED
+        ? '<button id="btnRegOpen">クリア者登録</button><button id="btnClearsOpen">クリア者一覧</button>'
+        : '';
+      box.innerHTML = `
+        <div class="title">★ ${escapeHtml(stageLabel)} CLEAR!</div>
+        <div class="row2">
+          <button id="btnBackSel">◀ 選択画面へ</button>
+          <button id="btnReplay">この面をもう一度</button>
+          ${onlineButtons}
+        </div>`;
+      document.getElementById('btnBackSel').addEventListener('click', () => switchScreen('select'));
+      document.getElementById('btnReplay').addEventListener('click', () => initStage());
+      const regBtn = document.getElementById('btnRegOpen');
+      const clrBtn = document.getElementById('btnClearsOpen');
+      if (regBtn) regBtn.addEventListener('click', () => openRegisterDialog(currentStage));
+      if (clrBtn) clrBtn.addEventListener('click', () => openClearsList(currentStage));
+      // 初回クリアなら登録ダイアログを自動表示（少し遅延してCLEAR画面を見せる）
+      if (wasFirstClear && ONLINE_ENABLED) {
+        setTimeout(() => openRegisterDialog(currentStage), 600);
+      }
+    }
+  } else if (gameState === 'dead' || gameState === 'stuck') {
+    box.classList.add('show');
+    const msg = gameState === 'dead' ? '✝ 生き埋め' : '× ありゃりゃ。。 詰みです。';
+    box.innerHTML = `
+      <div class="title">${msg}</div>
+      <div class="row2">
+        <button id="btnReplay2">もう一度</button>
+        <button id="btnBackSel2">${testPlayMode ? '◀ エディタへ' : '◀ 選択画面へ'}</button>
+      </div>`;
+    document.getElementById('btnReplay2').addEventListener('click', () => initStage());
+    document.getElementById('btnBackSel2').addEventListener('click', () => {
+      if (testPlayMode) {
+        testPlayMode = false;
+        switchScreen('editor');
+      } else {
+        switchScreen('select');
+      }
+    });
+  }
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+const board = document.getElementById('board');
+const playerEl = document.getElementById('player');
+// 復活予告（全数値表示）トグル
+let reviveHintOn = false;
+
+function render() {
+  // 復活予告セット：digCount に1足したら復活する＝あと1手で復活
+  const warnSet = new Set();
+  // 全マスへの「あと何手で復活」マッピング
+  const hintMap = new Map();
+  for (const d of digQueue) {
+    const remaining = d.turnDug + REVIVE_DELAY - digCount;
+    if (remaining === 1) warnSet.add(d.x + ',' + d.y);
+    hintMap.set(d.x + ',' + d.y, remaining);
+  }
+  board.innerHTML = '';
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const c = document.createElement('div');
+      c.className = 'cell';
+      const t = grid[y][x];
+      if (t === T.BLOCK) {
+        if (isExitCell[y][x] && isExitRevealed()) c.classList.add('e');
+        else c.classList.add('b');
+      } else if (t === T.FIXED)  c.classList.add('f');
+      else if (t === T.LADDER) c.classList.add('l');
+      else if (t === T.ROPE)   c.classList.add('r');
+      else if (t === T.PEARL)  c.classList.add('p');
+      const key = x + ',' + y;
+      if (warnSet.has(key)) c.classList.add('warn');
+      // 復活予告ON時は全掘削穴に数字を出す
+      if (reviveHintOn && hintMap.has(key)) {
+        const n = hintMap.get(key);
+        if (n >= 1 && n <= 5) {
+          const h = document.createElement('div');
+          h.className = 'reviveHint';
+          h.textContent = String(n);
+          c.appendChild(h);
+        }
+      }
+      board.appendChild(c);
+    }
+  }
+  playerEl.style.left = (player.x * 100 / W) + '%';
+  playerEl.style.top  = (player.y * 100 / H) + '%';
+}
+function updateHUD() {
+  document.getElementById('hPearl').textContent = (pearlsTotal - pearlsLeft) + '/' + pearlsTotal;
+  document.getElementById('hDig').textContent = digCount;
+  document.getElementById('hTurn').textContent = turnCount;
+}
+
+// キーボード
+function isAnyModalOpen() {
+  return !!document.querySelector('.modal:not(.hidden)');
+}
+function isInputFocused() {
+  const el = document.activeElement;
+  if (!el) return false;
+  if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return true;
+  if (el.isContentEditable) return true;
+  return false;
+}
+window.addEventListener('keydown', (e) => {
+  // モーダル表示中・入力フォーカス中は盤面操作キーを無効化
+  if (isAnyModalOpen() || isInputFocused()) return;
+  if (e.key === 'r' || e.key === 'R') { initStage(); return; }
+  if (e.key === 'u' || e.key === 'U') { if (!isBusy) doUndo(); e.preventDefault(); return; }
+  if (gameState !== 'play' || isBusy) return;
+  switch (e.key) {
+    case 'ArrowLeft':  doMove(-1, 0); e.preventDefault(); break;
+    case 'ArrowRight': doMove( 1, 0); e.preventDefault(); break;
+    case 'ArrowUp':    doMove( 0,-1); e.preventDefault(); break;
+    case 'ArrowDown':  doMove( 0, 1); e.preventDefault(); break;
+    case 'z': case 'Z': doDig(-1); e.preventDefault(); break;
+    case 'x': case 'X': doDig( 1); e.preventDefault(); break;
+  }
+});
+
+// スワイプ追従
+const boardWrap = document.getElementById('boardWrap');
+let touchStart = null;
+let touchMoved = false;
+const STEP_RATIO = 0.85;
+const MAX_STEPS = 2;
+const TAP_MAX = 6;
+
+function cellPx() { return boardWrap.getBoundingClientRect().width / W; }
+function getCell(cx, cy) {
+  const r = boardWrap.getBoundingClientRect();
+  if (cx < r.left || cx >= r.right || cy < r.top || cy >= r.bottom) return null;
+  const x = Math.floor((cx - r.left) / r.width * W);
+  const y = Math.floor((cy - r.top) / r.height * H);
+  return { x, y };
+}
+
+boardWrap.addEventListener('pointerdown', (e) => {
+  if (gameState !== 'play' || isBusy) return;
+  touchStart = { x: e.clientX, y: e.clientY, ox: e.clientX, oy: e.clientY };
+  touchMoved = false;
+  try { boardWrap.setPointerCapture(e.pointerId); } catch(_) {}
+  e.preventDefault();
+}, { passive: false });
+
+boardWrap.addEventListener('pointermove', (e) => {
+  if (!touchStart || gameState !== 'play') return;
+  if (isBusy) {
+    touchStart.x = e.clientX; touchStart.y = e.clientY;
+    return;
+  }
+  const step = cellPx() * STEP_RATIO;
+  let safety = MAX_STEPS;
+  while (safety-- > 0) {
+    const dx = e.clientX - touchStart.x, dy = e.clientY - touchStart.y;
+    if (Math.abs(dx) < step && Math.abs(dy) < step) break;
+    let sx = 0, sy = 0;
+    if (Math.abs(dx) > Math.abs(dy)) sx = dx > 0 ? 1 : -1;
+    else sy = dy > 0 ? 1 : -1;
+    const bx = player.x, by = player.y;
+    doMove(sx, sy);
+    touchMoved = true;
+    touchStart.x += sx * step;
+    touchStart.y += sy * step;
+    if (isBusy) break;
+    if (player.x === bx && player.y === by) break;
+  }
+  e.preventDefault();
+}, { passive: false });
+
+boardWrap.addEventListener('pointerup', (e) => {
+  if (!touchStart) return;
+  const dx = e.clientX - touchStart.ox, dy = e.clientY - touchStart.oy;
+  if (!touchMoved && Math.abs(dx) < TAP_MAX && Math.abs(dy) < TAP_MAX) {
+    const p = getCell(e.clientX, e.clientY);
+    if (p) {
+      // 足元の左下/右下に掘れるブロックがあれば掘削、なければ自動歩行
+      const isDigSpot = (p.y === player.y + 1 && (p.x === player.x - 1 || p.x === player.x + 1));
+      if (isDigSpot) {
+        const t = grid[p.y] && grid[p.y][p.x];
+        const isRevealedExit = isExitCell[p.y] && isExitCell[p.y][p.x] && isExitRevealed();
+        if ((t === T.BLOCK || t === T.FIXED) && !isRevealedExit) {
+          // ブロックがある（判明済み出口でない）→ 掘削
+          doDig(p.x === player.x - 1 ? -1 : 1);
+        } else {
+          // ブロックなし or 判明済み出口 → 自動歩行
+          autoWalkTo(p.x, p.y);
+        }
+      } else if (!(p.x === player.x && p.y === player.y)) {
+        autoWalkTo(p.x, p.y);
+      }
+    }
+  }
+  touchStart = null; touchMoved = false;
+});
+boardWrap.addEventListener('pointercancel', () => { touchStart = null; touchMoved = false; });
+
+document.getElementById('btnReset').addEventListener('click', () => initStage());
+
+// UNDO
+function doUndo() {
+  if (moveLog.length === 0) return;
+  if (isBusy) return;
+  const newLog = moveLog.slice(0, -1);
+  try {
+    dryRunMoveLog(newLog);
+    moveLog = newLog;
+    autoWalking = false;
+    document.getElementById('hState').textContent = '';
+    updateProgressUI();
+    render();
+    updateHUD();
+    renderMoveLog();
+    updateUndoBtn();
+    dbg('UNDO', `残${moveLog.length}手`);
+  } catch (err) {
+    dbg('UNDO-ERR', err.message);
+  }
+}
+document.getElementById('btnUndo').addEventListener('click', () => {
+  if (!isBusy) doUndo();
+});
+
+// INPUT / REPLAY
+function setMlEditing(on) {
+  mlEditing = on;
+  const t = document.getElementById('moveLogText');
+  const b = document.getElementById('btnInputReplay');
+  const slow = document.getElementById('btnSlowReplay');
+  const err = document.getElementById('mlError');
+  if (on) {
+    t.setAttribute('contenteditable', 'true');
+    t.removeAttribute('inputmode');
+    b.textContent = 'REPLAY';
+    if (slow) slow.classList.remove('hidden');
+    err.textContent = '';
+    err.classList.remove('ok');
+    t.textContent = moveLog.map(fmtEntry).join(' ');
+    t.focus();
+  } else {
+    t.setAttribute('contenteditable', 'false');
+    t.setAttribute('inputmode', 'none');
+    b.textContent = 'INPUT';
+    if (slow) slow.classList.add('hidden');
+    renderMoveLog();
+  }
+  updateUndoBtn();
+}
+function runReplayFromEditor(speed) {
+  const text = document.getElementById('moveLogText').textContent;
+  let entries;
+  try {
+    entries = parseMoveLog(text);
+  } catch (ex) {
+    const err = document.getElementById('mlError');
+    err.textContent = `パースエラー：${ex.message}`;
+    err.classList.remove('ok');
+    return;
+  }
+  try {
+    dryRunMoveLog(entries);
+  } catch (ex) {
+    const err = document.getElementById('mlError');
+    err.textContent = `矛盾しています：${ex.message}`;
+    err.classList.remove('ok');
+    return;
+  }
+  setMlEditing(false);
+  const err = document.getElementById('mlError');
+  err.textContent = `${entries.length}手を再生中...`;
+  err.classList.remove('ok');
+  startAnimatedReplay(entries, () => {
+    moveLog = entries;
+    autoWalking = false;
+    document.getElementById('hState').textContent = '';
+    updateProgressUI();
+    render();
+    updateHUD();
+    renderMoveLog();
+    updateUndoBtn();
+    err.textContent = `${entries.length}手の再生完了`;
+    err.classList.add('ok');
+    setTimeout(() => { err.textContent = ''; err.classList.remove('ok'); }, 2000);
+  }, speed);
+}
+document.getElementById('btnInputReplay').addEventListener('click', () => {
+  if (!mlEditing) {
+    setMlEditing(true);
+    return;
+  }
+  runReplayFromEditor(1.5);
+});
+document.getElementById('btnSlowReplay').addEventListener('click', () => {
+  if (!mlEditing) return;
+  runReplayFromEditor(1.0);
+});
+
+document.getElementById('btnReviveHint').addEventListener('click', (e) => {
+  reviveHintOn = !reviveHintOn;
+  e.currentTarget.classList.toggle('on', reviveHintOn);
+  render();
+  dbg('HINT', reviveHintOn ? 'on' : 'off');
+});
+
+document.getElementById('btnClearsList').addEventListener('click', () => {
+  if (currentStage) openClearsList(currentStage);
+});
+
+// ============================
+// エディタ
+// ============================
+const EDIT_CHARS = ['★','出','■','田','≡','〜','●','□'];
+let editGrid = null;
+let editTool = '■';
+let editBoardBuilt = false;
+
+function initEditor() {
+  // editGrid が既にあれば（テストプレイから戻ってきた時など）リセットせず維持
+  if (!editGrid || editGrid.length !== H || (editGrid[0] && editGrid[0].length !== W)) {
+    editGrid = [];
+    for (let y = 0; y < H; y++) editGrid.push(new Array(W).fill('□'));
+  }
+  if (!editBoardBuilt) { buildEditBoard(); editBoardBuilt = true; }
+  renderEditBoard();
+  renderStageText();
+  setTool('■');
+  document.getElementById('checkResult').innerHTML = '';
+}
+
+// 明示的にエディタを空盤面にリセットする（必要な時だけ呼ぶ）
+function resetEditorBoard() {
+  editGrid = [];
+  for (let y = 0; y < H; y++) editGrid.push(new Array(W).fill('□'));
+  if (!editBoardBuilt) { buildEditBoard(); editBoardBuilt = true; }
+  renderEditBoard();
+  renderStageText();
+  setTool('■');
+  document.getElementById('checkResult').innerHTML = '';
+}
+
+function cellClassFor(ch) {
+  switch (ch) {
+    case '■': return 'b';
+    case '田': return 'f';
+    case '≡': return 'l';
+    case '〜': return 'r';
+    case '●': return 'p';
+    case '出': return 'e';
+    default: return '';
+  }
+}
+
+function setCellChar(cellEl, ch) {
+  // クラスをリセット
+  cellEl.className = 'ecell';
+  cellEl.innerHTML = '';
+  if (ch === '★') {
+    cellEl.innerHTML = '<div style="position:absolute;inset:18%;background:radial-gradient(circle at 35% 30%,#fff,#ff6ec7 65%,#a8225f);border-radius:45%;"></div>';
+  } else {
+    const cls = cellClassFor(ch);
+    if (cls) cellEl.classList.add(cls);
+  }
+  cellEl.dataset.ch = ch;
+}
+
+function buildEditBoard() {
+  const eb = document.getElementById('editBoard');
+  const frag = document.createDocumentFragment();
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const c = document.createElement('div');
+      c.dataset.x = x; c.dataset.y = y;
+      setCellChar(c, editGrid[y][x]);
+      frag.appendChild(c);
+    }
+  }
+  eb.innerHTML = '';
+  eb.appendChild(frag);
+
+  // ドラッグ塗り
+  let painting = false, lastKey = null;
+  const getCellAt = (cx, cy) => {
+    const r = eb.getBoundingClientRect();
+    if (cx < r.left || cx >= r.right || cy < r.top || cy >= r.bottom) return null;
+    const x = Math.floor((cx - r.left) / r.width * W);
+    const y = Math.floor((cy - r.top) / r.height * H);
+    if (x < 0 || x >= W || y < 0 || y >= H) return null;
+    return { x, y };
+  };
+  const paintAt = (x, y) => {
+    const key = x + ',' + y;
+    if (key === lastKey) return;
+    lastKey = key;
+    placeAt(x, y);
+  };
+  eb.addEventListener('pointerdown', (e) => {
+    const p = getCellAt(e.clientX, e.clientY);
+    if (!p) return;
+    painting = true; lastKey = null;
+    paintAt(p.x, p.y);
+    try { eb.setPointerCapture(e.pointerId); } catch(_) {}
+    e.preventDefault();
+  }, { passive: false });
+  eb.addEventListener('pointermove', (e) => {
+    if (!painting) return;
+    const p = getCellAt(e.clientX, e.clientY);
+    if (!p) return;
+    paintAt(p.x, p.y);
+    e.preventDefault();
+  }, { passive: false });
+  const endPaint = () => { painting = false; lastKey = null; };
+  eb.addEventListener('pointerup', endPaint);
+  eb.addEventListener('pointercancel', endPaint);
+}
+
+function renderEditBoard() {
+  const cells = document.querySelectorAll('#editBoard .ecell');
+  cells.forEach(c => {
+    const x = +c.dataset.x, y = +c.dataset.y;
+    const ch = editGrid[y][x];
+    if (c.dataset.ch !== ch) setCellChar(c, ch);
+  });
+}
+
+function placeAt(x, y) {
+  // ★と出はユニーク
+  if (editTool === '★' || editTool === '出') {
+    for (let yy = 0; yy < H; yy++) {
+      for (let xx = 0; xx < W; xx++) {
+        if (editGrid[yy][xx] === editTool) editGrid[yy][xx] = '□';
+      }
+    }
+  }
+  editGrid[y][x] = editTool;
+  renderEditBoard();
+  renderStageText();
+}
+
+function setTool(ch) {
+  editTool = ch;
+  document.querySelectorAll('.pal').forEach(b => {
+    b.classList.toggle('active', b.dataset.tool === ch);
+  });
+}
+
+function renderStageText() {
+  const txt = editGrid.map(row => row.join('')).join('\n');
+  document.getElementById('stageTextOut').textContent = txt;
+}
+
+function clearBoard() {
+  editGrid = [];
+  for (let y = 0; y < H; y++) editGrid.push(new Array(W).fill('□'));
+  renderEditBoard();
+  renderStageText();
+}
+
+// エディタで作った盤面の保持（テストプレイ・投稿用）
+let testStageBoard = null; // string[12]
+
+function applyEditorAndPlay() {
+  const r = validateBoardForEdit(editGrid);
+  document.getElementById('checkResult').innerHTML = r.msgs.map(([k,m]) => `<div class="line ${k}">${m}</div>`).join('');
+  if (!r.ok) return;
+  testStageBoard = editGrid.map(row => row.join(''));
+  currentStage = 'test';
+  testPlayMode = true;
+  initStage();
+  switchScreen('game');
+}
+
+function switchScreen(which) {
+  dbg('SWITCH', which);
+  const sel = document.getElementById('selectScreen');
+  const game = document.getElementById('gameScreen');
+  const edit = document.getElementById('editorScreen');
+  const modeBtn = document.getElementById('modeBtn');
+  sel.classList.add('hidden');
+  game.classList.add('hidden');
+  edit.classList.add('hidden');
+  if (which === 'editor') {
+    initEditor();
+    edit.classList.remove('hidden');
+    modeBtn.textContent = '◀ PLAY';
+  } else if (which === 'game') {
+    game.classList.remove('hidden');
+    modeBtn.textContent = '▶ EDITOR';
+  } else { // select
+    renderStageSelect();
+    sel.classList.remove('hidden');
+    modeBtn.textContent = '▶ EDITOR';
+  }
+}
+
+function renderStageSelect() {
+  const grid = document.getElementById('stageGrid');
+  grid.innerHTML = '';
+  // デフォルト10面
+  for (const id of DEFAULT_ORDER) {
+    const b = document.createElement('button');
+    b.className = 'stageBtn';
+    if (isStageCleared(id)) b.classList.add('cleared');
+    const cn = clearCounts[id] || 0;
+    const cnStr = ONLINE_ENABLED ? `<div class="clearN">クリア者:${cn}</div>` : '';
+    const statusStr = isStageCleared(id) ? '<div class="status">CLEAR</div>' : '';
+    b.innerHTML = `<div class="num">${id}</div>${statusStr}${cnStr}`;
+    b.addEventListener('click', () => {
+      currentStage = id;
+      testPlayMode = false;
+      initStage();
+      switchScreen('game');
+    });
+    grid.appendChild(b);
+  }
+  // 投稿ステージ（5面以上クリアで表示）
+  const userPanel = document.getElementById('userStagesPanel');
+  if (userPanel) {
+    if (isEditorUnlocked() && userStages.length > 0) {
+      userPanel.classList.remove('hidden');
+      const ug = document.getElementById('userStageGrid');
+      ug.innerHTML = '';
+      for (const u of userStages) {
+        const b = document.createElement('button');
+        b.className = 'stageBtn userStage';
+        if (isStageCleared(u.id)) b.classList.add('cleared');
+        const numDiv = document.createElement('div');
+        numDiv.className = 'num';
+        numDiv.textContent = u.title || '無題';
+        const statusDiv = document.createElement('div');
+        statusDiv.className = 'status';
+        statusDiv.textContent = (isStageCleared(u.id) ? 'CLEAR / ' : '') + (u.author ? '@' + u.author : '');
+        b.appendChild(numDiv);
+        b.appendChild(statusDiv);
+        if (ONLINE_ENABLED) {
+          const cn = clearCounts[u.id] || 0;
+          const cnDiv = document.createElement('div');
+          cnDiv.className = 'clearN';
+          cnDiv.textContent = `クリア者:${cn}`;
+          b.appendChild(cnDiv);
+        }
+        b.addEventListener('click', () => {
+          currentStage = u.id;
+          testPlayMode = false;
+          initStage();
+          switchScreen('game');
+        });
+        ug.appendChild(b);
+      }
+    } else {
+      userPanel.classList.add('hidden');
+    }
+  }
+  const modeBtnEl = document.getElementById('modeBtn');
+  if (modeBtnEl) modeBtnEl.style.display = isEditorUnlocked() ? '' : 'none';
+  const helpBtnEl = document.getElementById('btnUnlockHelp');
+  if (helpBtnEl) helpBtnEl.style.display = isEditorUnlocked() ? '' : 'none';
+}
+
+document.getElementById('btnBackToSelect').addEventListener('click', () => {
+  if (testPlayMode) {
+    testPlayMode = false;
+    switchScreen('editor');
+  } else {
+    switchScreen('select');
+  }
+});
+
+document.getElementById('modeBtn').addEventListener('click', () => {
+  switchScreen('editor');
+});
+document.getElementById('btnEditBack').addEventListener('click', () => {
+  switchScreen('select');
+});
+document.querySelectorAll('.pal').forEach(b => {
+  b.addEventListener('click', () => setTool(b.dataset.tool));
+});
+// 盤面チェック
+function checkBoard() {
+  const r = document.getElementById('checkResult');
+  const result = validateBoardForEdit(editGrid);
+  r.innerHTML = result.msgs.map(([k,m]) => `<div class="line ${k}">${m}</div>`).join('');
+  return result;
+}
+
+// 編集中盤面のバリデーション。 戻り値: { ok, msgs }
+function validateBoardForEdit(grid) {
+  const msgs = [];
+  let starN = 0, exitN = 0, pearlN = 0;
+  let starPos = null;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const c = grid[y][x];
+      if (c === '★') { starN++; starPos = {x, y}; }
+      else if (c === '出') exitN++;
+      else if (c === '●') pearlN++;
+    }
+  }
+  let ok = true;
+  if (starN === 0) { msgs.push(['ng', 'スタート★がありません']); ok = false; }
+  else if (starN > 1) { msgs.push(['ng', `スタート★が${starN}個（1個まで）`]); ok = false; }
+  else msgs.push(['ok', 'スタート: OK']);
+
+  if (exitN === 0) { msgs.push(['ng', '出口「出」がありません']); ok = false; }
+  else if (exitN > 1) { msgs.push(['ng', `出口が${exitN}個（1個まで）`]); ok = false; }
+  else msgs.push(['ok', '出口: OK']);
+
+  if (pearlN === 0) { msgs.push(['ng', '珠●が0個です（少なくとも1個必要）']); ok = false; }
+  else msgs.push(['ok', `珠: ${pearlN}個`]);
+
+  // スタート直下の足場
+  if (starN === 1 && starPos) {
+    const onLadder = grid[starPos.y][starPos.x] === '≡';
+    const below = starPos.y + 1 < H ? grid[starPos.y + 1][starPos.x] : '床';
+    const isFooting = below === '■' || below === '田' || below === '≡' || below === '床';
+    if (!onLadder && !isFooting) {
+      msgs.push(['ng', 'スタート直下に足場がありません']);
+      ok = false;
+    } else {
+      msgs.push(['ok', 'スタート足場: OK']);
+    }
+  }
+  return { ok, msgs };
+}
+
+document.getElementById('btnCheck').addEventListener('click', checkBoard);
+document.getElementById('btnPlayThis').addEventListener('click', applyEditorAndPlay);
+
+// クリップボード（フォールバック付き）
+function copyText(text, btnEl) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(
+      () => flashBtn(btnEl, 'COPIED'),
+      () => fallback()
+    );
+    return;
+  }
+  fallback();
+  function fallback() {
+    let ok = false;
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch(_) {}
+    flashBtn(btnEl, ok ? 'COPIED' : 'FAILED');
+  }
+}
+function flashBtn(btn, msg) {
+  if (!btn) return;
+  const orig = btn.textContent;
+  btn.textContent = msg;
+  setTimeout(() => { btn.textContent = orig; }, 900);
+}
+
+// MOVE LOG ボタン
+document.getElementById('btnCopyMove').addEventListener('click', (e) => {
+  const t = document.getElementById('moveLogText').textContent;
+  if (t) copyText(t, e.currentTarget);
+});
+
+document.getElementById('btnCopyStage').addEventListener('click', (e) => {
+  const t = document.getElementById('stageTextOut').textContent;
+  if (t) copyText(t, e.currentTarget);
+});
+
+// BOARD TEXT の INPUT/LOAD トグル
+let stageTextEditing = false;
+function setStageTextEditing(on) {
+  stageTextEditing = on;
+  const out = document.getElementById('stageTextOut');
+  const btn = document.getElementById('btnInputStage');
+  const err = document.getElementById('stageTextError');
+  err.textContent = '';
+  err.classList.remove('ok');
+  if (on) {
+    out.setAttribute('contenteditable', 'true');
+    out.removeAttribute('inputmode');
+    btn.textContent = 'LOAD';
+    out.focus();
+  } else {
+    out.setAttribute('contenteditable', 'false');
+    out.setAttribute('inputmode', 'none');
+    btn.textContent = 'INPUT';
+  }
+}
+function parseBoardText(text) {
+  // CR削除、空行削除、各行を文字単位で取る
+  const lines = text.replace(/\r/g, '').split('\n').filter(l => l.length > 0);
+  if (lines.length !== H) {
+    return { ok: false, err: `行数が${lines.length}行（${H}行必要）` };
+  }
+  const grid = [];
+  for (let y = 0; y < H; y++) {
+    const chars = [...lines[y]];
+    if (chars.length !== W) {
+      return { ok: false, err: `${y + 1}行目が${chars.length}文字（${W}文字必要）` };
+    }
+    const row = [];
+    for (let x = 0; x < W; x++) {
+      let c = chars[x];
+      if (c === '～') c = '〜'; // 全角チルダ統一
+      if (!EDIT_CHARS.includes(c)) {
+        return { ok: false, err: `${y + 1}行${x + 1}文字目「${c}」は不正` };
+      }
+      row.push(c);
+    }
+    grid.push(row);
+  }
+  return { ok: true, grid };
+}
+document.getElementById('btnInputStage').addEventListener('click', () => {
+  if (!stageTextEditing) {
+    setStageTextEditing(true);
+    return;
+  }
+  // LOAD：パースして反映
+  const text = document.getElementById('stageTextOut').textContent;
+  const r = parseBoardText(text);
+  const err = document.getElementById('stageTextError');
+  if (!r.ok) {
+    err.textContent = 'エラー: ' + r.err;
+    err.classList.remove('ok');
+    return;
+  }
+  editGrid = r.grid;
+  setStageTextEditing(false);
+  renderEditBoard();
+  renderStageText();
+  err.textContent = '読み込みました';
+  err.classList.add('ok');
+  setTimeout(() => { err.textContent = ''; err.classList.remove('ok'); }, 1500);
+});
+
+// 全消去：2段階タップ
+const confirmClearModal = document.getElementById('confirmClearModal');
+document.getElementById('btnClearBoard').addEventListener('click', () => {
+  confirmClearModal.classList.remove('hidden');
+});
+document.getElementById('btnConfirmClearNo').addEventListener('click', () => {
+  confirmClearModal.classList.add('hidden');
+});
+confirmClearModal.querySelector('.modalBg').addEventListener('click', () => {
+  confirmClearModal.classList.add('hidden');
+});
+document.getElementById('btnConfirmClearYes').addEventListener('click', () => {
+  clearBoard();
+  confirmClearModal.classList.add('hidden');
+});
+
+// これは何？ モーダル
+const aboutModal = document.getElementById('aboutModal');
+document.getElementById('btnAbout').addEventListener('click', () => {
+  aboutModal.classList.remove('hidden');
+});
+document.getElementById('btnAboutClose').addEventListener('click', () => {
+  aboutModal.classList.add('hidden');
+});
+aboutModal.querySelector('.modalBg').addEventListener('click', () => {
+  aboutModal.classList.add('hidden');
+});
+
+// エディタ解禁説明モーダル
+const unlockModal = document.getElementById('unlockModal');
+document.getElementById('btnUnlockHelp').addEventListener('click', () => {
+  unlockModal.classList.remove('hidden');
+});
+document.getElementById('btnUnlockClose').addEventListener('click', () => {
+  unlockModal.classList.add('hidden');
+});
+unlockModal.querySelector('.modalBg').addEventListener('click', () => {
+  unlockModal.classList.add('hidden');
+});
+
+// クリア者登録ダイアログ
+const registerModal = document.getElementById('registerModal');
+let registerStageId = null;
+function openRegisterDialog(stageId) {
+  if (!ONLINE_ENABLED) return;
+  registerStageId = stageId;
+  document.getElementById('registerName').value = '';
+  document.getElementById('registerError').textContent = '';
+  document.getElementById('registerError').classList.remove('ok');
+  registerModal.classList.remove('hidden');
+}
+function closeRegisterDialog() {
+  registerModal.classList.add('hidden');
+}
+document.getElementById('btnRegisterSkip').addEventListener('click', closeRegisterDialog);
+registerModal.querySelector('.modalBg').addEventListener('click', closeRegisterDialog);
+document.getElementById('btnRegisterSubmit').addEventListener('click', async () => {
+  const name = sanitizeName(document.getElementById('registerName').value);
+  const errEl = document.getElementById('registerError');
+  if (!name) {
+    errEl.textContent = '名前を入力してください（または「スキップ」）';
+    errEl.classList.remove('ok');
+    return;
+  }
+  errEl.textContent = '送信中...';
+  errEl.classList.remove('ok');
+  try {
+    await apiPost('clear', { stage: registerStageId, name });
+    // ローカルカウントを増やす
+    clearCounts[registerStageId] = (clearCounts[registerStageId] || 0) + 1;
+    updateClearsListBtn();
+    errEl.textContent = '登録しました';
+    errEl.classList.add('ok');
+    setTimeout(closeRegisterDialog, 800);
+  } catch (e) {
+    errEl.textContent = '送信失敗：' + e.message;
+    errEl.classList.remove('ok');
+  }
+});
+
+// クリア者一覧モーダル
+const clearsModal = document.getElementById('clearsModal');
+async function openClearsList(stageId) {
+  if (!ONLINE_ENABLED) return;
+  const titleEl = document.getElementById('clearsTitle');
+  const meta = getStageMeta(stageId);
+  titleEl.textContent = (meta?.title || ('ステージ' + stageId)) + ' のクリア者';
+  const listEl = document.getElementById('clearsList');
+  listEl.innerHTML = '';
+  listEl.textContent = '読み込み中...';
+  clearsModal.classList.remove('hidden');
+  try {
+    const data = await apiGet('clears', { stage: stageId });
+    listEl.innerHTML = '';
+    if (!data.entries || data.entries.length === 0) {
+      const div = document.createElement('div');
+      div.className = 'empty';
+      div.textContent = 'まだクリア者がいません';
+      listEl.appendChild(div);
+      return;
+    }
+    for (const e of data.entries) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = e.name || '';
+      const time = document.createElement('span');
+      time.className = 'time';
+      time.textContent = e.cleared_at ? new Date(e.cleared_at).toLocaleString() : '';
+      row.appendChild(name);
+      row.appendChild(time);
+      listEl.appendChild(row);
+    }
+  } catch (e) {
+    listEl.innerHTML = '';
+    const div = document.createElement('div');
+    div.className = 'empty';
+    div.textContent = '読み込み失敗：' + e.message;
+    listEl.appendChild(div);
+  }
+}
+document.getElementById('btnClearsClose').addEventListener('click', () => clearsModal.classList.add('hidden'));
+clearsModal.querySelector('.modalBg').addEventListener('click', () => clearsModal.classList.add('hidden'));
+
+// 投稿モーダル
+const submitModal = document.getElementById('submitModal');
+function openSubmitDialog() {
+  if (!ONLINE_ENABLED) {
+    alert('オンライン機能が未設定のため投稿できません');
+    return;
+  }
+  document.getElementById('submitAuthor').value = '';
+  document.getElementById('submitTitle').value = '';
+  document.getElementById('submitError').textContent = '';
+  document.getElementById('submitError').classList.remove('ok');
+  submitModal.classList.remove('hidden');
+}
+document.getElementById('btnSubmitCancel').addEventListener('click', () => submitModal.classList.add('hidden'));
+submitModal.querySelector('.modalBg').addEventListener('click', () => submitModal.classList.add('hidden'));
+document.getElementById('btnSubmitSubmit').addEventListener('click', async () => {
+  const author = sanitizeName(document.getElementById('submitAuthor').value);
+  const title = sanitizeTitle(document.getElementById('submitTitle').value);
+  const errEl = document.getElementById('submitError');
+  if (!author || !title) {
+    errEl.textContent = '制作者名とタイトルの両方を入力してください';
+    errEl.classList.remove('ok');
+    return;
+  }
+  if (!testStageBoard) {
+    errEl.textContent = 'テストプレイした盤面が見つかりません';
+    errEl.classList.remove('ok');
+    return;
+  }
+  const board = testStageBoard.join('\n');
+  errEl.textContent = '送信中...';
+  errEl.classList.remove('ok');
+  try {
+    const res = await apiPost('submit', { author, title, board });
+    errEl.textContent = '投稿しました';
+    errEl.classList.add('ok');
+    setTimeout(async () => {
+      submitModal.classList.add('hidden');
+      testPlayMode = false;
+      // 投稿ステージ一覧を再ロード
+      await loadUserStages();
+      switchScreen('select');
+    }, 1000);
+  } catch (e) {
+    errEl.textContent = '投稿失敗：' + e.message;
+    errEl.classList.remove('ok');
+  }
+});
+
+// 投稿ステージ一覧をロード
+async function loadUserStages() {
+  if (!ONLINE_ENABLED) return;
+  try {
+    const data = await apiGet('stages');
+    if (data && Array.isArray(data.stages)) {
+      // boardは文字列で来る前提（改行区切り）→ 配列に
+      userStages = data.stages.map(s => ({
+        id: String(s.id),
+        title: String(s.title || ''),
+        author: String(s.author || ''),
+        board: String(s.board || '').split('\n'),
+        created_at: s.created_at,
+      })).filter(s => s.board.length === H);
+    }
+  } catch (_) {
+    // 失敗してもローカルプレイは継続
+  }
+  // 選択画面が表示中なら更新
+  if (!document.getElementById('selectScreen').classList.contains('hidden')) {
+    renderStageSelect();
+  }
+}
+
+initStage();
+switchScreen('select');
+loadUserStages();
+loadClearCounts().then(() => {
+  // 件数取得後に再描画
+  if (!document.getElementById('selectScreen').classList.contains('hidden')) {
+    renderStageSelect();
+  }
+  updateClearsListBtn();
+});
+</script>
+</body>
+</html>
