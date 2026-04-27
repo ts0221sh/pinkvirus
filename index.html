@@ -680,7 +680,7 @@
 <body>
 
 <h1>Pink Virus</h1>
-<div class="v">build minimal-67</div>
+<div class="v">build minimal-68</div>
 
 <div id="aboutModal" class="modal hidden">
   <div class="modalBg"></div>
@@ -1996,20 +1996,19 @@ function isInputFocused() {
   return false;
 }
 window.addEventListener('keydown', (e) => {
+  // モーダル表示中・入力フォーカス中は盤面操作キーを無効化
   if (isAnyModalOpen() || isInputFocused()) return;
-  // IME変換中は無視（日本語入力でz/xが吸われるケース対策）
-  if (e.isComposing || e.keyCode === 229) return;
-  const k = e.key;
-  const code = e.code; // e.code は IME や CapsLock の影響を受けにくい
-  if (k === 'r' || k === 'R' || code === 'KeyR') { initStage(); return; }
-  if (k === 'u' || k === 'U' || code === 'KeyU') { if (!isBusy) doUndo(); e.preventDefault(); return; }
+  if (e.key === 'r' || e.key === 'R') { initStage(); return; }
+  if (e.key === 'u' || e.key === 'U') { if (!isBusy) doUndo(); e.preventDefault(); return; }
   if (gameState !== 'play' || isBusy) return;
-  if (k === 'ArrowLeft')  { doMove(-1, 0); e.preventDefault(); return; }
-  if (k === 'ArrowRight') { doMove( 1, 0); e.preventDefault(); return; }
-  if (k === 'ArrowUp')    { doMove( 0,-1); e.preventDefault(); return; }
-  if (k === 'ArrowDown')  { doMove( 0, 1); e.preventDefault(); return; }
-  if (k === 'z' || k === 'Z' || code === 'KeyZ') { doDig(-1); e.preventDefault(); return; }
-  if (k === 'x' || k === 'X' || code === 'KeyX') { doDig( 1); e.preventDefault(); return; }
+  switch (e.key) {
+    case 'ArrowLeft':  doMove(-1, 0); e.preventDefault(); break;
+    case 'ArrowRight': doMove( 1, 0); e.preventDefault(); break;
+    case 'ArrowUp':    doMove( 0,-1); e.preventDefault(); break;
+    case 'ArrowDown':  doMove( 0, 1); e.preventDefault(); break;
+    case 'z': case 'Z': doDig(-1); e.preventDefault(); break;
+    case 'x': case 'X': doDig( 1); e.preventDefault(); break;
+  }
 });
 
 // スワイプ追従
