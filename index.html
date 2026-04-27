@@ -680,18 +680,16 @@
 <body>
 
 <h1>Pink Virus</h1>
-<div class="v">build minimal-64</div>
+<div class="v">build minimal-67</div>
 
 <div id="aboutModal" class="modal hidden">
   <div class="modalBg"></div>
   <div class="modalBox">
     <div class="modalTitle">PINK VIRUS について</div>
     <div class="modalBody">
-      <p>15年以上前に閉鎖してしまったパズル投稿サイトにあったパズルゲームを再現したものです。</p>
-      <p>パズルのルールはフライパン職人によるものではありません。ステージデータはフライパンによるものです(が、ステージ3、4、6は当時存在した有名問を記憶から復元して収録しています)。</p>
-      <p>ピンクのキャラクターを操作して、すべての珠を集めたら現れるゴールに到達するとクリアです。<br>キャラクターは重力に従って移動します。上移動はハシゴがある場所でのみ可能です。</p>
-      <p>キャラクターの右下か左下にある通常ブロックは掘ることができます。<br>固定ブロックは掘れません。また、ブロックの上にブロックがある場合も掘れません。</p>
-      <p>同時に掘れるブロックは5つのため、それ以上のブロックを掘るとブロックは順番に復活します。</p>
+      <p>15年以上前に閉鎖してしまったパズル投稿サイトにあったパズルゲームを再現したものです。<br>パズルのルールはフライパン職人によるものではありません。ステージデータはフライパン職人によるものです(が、ステージ3、4、6は当時存在した有名問を記憶から復元して収録しています)。</p>
+      <p>ピンクのキャラクターを操作して、すべての珠を集めたら現れるゴールに到達するとクリアです。<br>キャラクターは重力に従って移動します。上移動はハシゴがある場所でのみ可能です。<br>キャラクターの右下か左下にある通常ブロックは掘ることができます。固定ブロックは掘れません。また、ブロックの上にブロックがある場合も掘れません。<br>同時に掘れるブロックは5つのため、それ以上のブロックを掘るとブロックは順番に復活します。</p>
+      <p>■操作方法<br>キーボード操作：矢印キーで移動、Zで「左下を掘る」、Xで「右下を掘る」<br>マウス・スマホ操作：クリック/タップ したマスに向かって移動または掘削</p>
     </div>
     <div class="modalFoot">
       <button id="btnAboutClose">閉じる</button>
@@ -1417,6 +1415,7 @@ function resetStateForReplay() {
   pearlsLeft = pearlsTotal;
   digQueue = []; digCount = 0; turnCount = 0;
   gameState = 'play'; isBusy = false; fallCounter = 0;
+  autoWalking = false;
 }
 
 // 同期版のwalk/dig：アニメなし、即座に状態を進める
@@ -1602,6 +1601,7 @@ function initStage() {
   pearlsLeft = pearlsTotal;
   digQueue = []; digCount = 0; turnCount = 0;
   gameState = 'play'; isBusy = false;
+  autoWalking = false;
   moveLog = []; fallCounter = 0;
   mlEditing = false;
   // testPlayMode は applyEditorAndPlay 等の呼び出し側で制御するためここでは触らない
@@ -1753,16 +1753,20 @@ function fallLoop() {
 }
 
 function doMove(dx, dy, opts) {
+  // 自動歩行中・他の処理中は手動入力を無視（mlとの整合性を保つため）
+  if (autoWalking && (!opts || !opts.fromAuto)) return;
+  if (isBusy) return;
   const before = { x: player.x, y: player.y };
   act(() => tryMove(dx, dy), `move ${dx},${dy}`, opts);
   if (player.x !== before.x || player.y !== before.y) {
-    // 自動歩行中はスキップ（autoWalkTo の開始時に walk(tx,ty) が1個 push される）
     if (!opts || !opts.skipMlPush) {
       mlPushWalk(player.x, player.y);
     }
   }
 }
 function doDig(side, opts) {
+  if (autoWalking && (!opts || !opts.fromAuto)) return;
+  if (isBusy) return;
   const before = digCount;
   act(() => { const ok = tryDig(side); if (ok) reviveIfDue(); return ok; }, `dig ${side}`, opts);
   if (digCount > before) {
@@ -1795,12 +1799,12 @@ function autoWalkTo(tx, ty) {
     let moved = false;
     if (ty !== player.y) {
       const sy = ty > player.y ? 1 : -1;
-      doMove(0, sy, { skipMlPush: true });
+      doMove(0, sy, { skipMlPush: true, fromAuto: true });
       if (player.x !== bx || player.y !== by) moved = true;
     }
     if (!moved && tx !== player.x) {
       const sx = tx > player.x ? 1 : -1;
-      doMove(sx, 0, { skipMlPush: true });
+      doMove(sx, 0, { skipMlPush: true, fromAuto: true });
       if (player.x !== bx || player.y !== by) moved = true;
     }
     if (!moved) {
