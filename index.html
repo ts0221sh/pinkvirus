@@ -680,7 +680,7 @@
 <body>
 
 <h1>Pink Virus</h1>
-<div class="v">build minimal-69</div>
+<div class="v">build minimal-72</div>
 
 <div id="aboutModal" class="modal hidden">
   <div class="modalBg"></div>
@@ -1695,6 +1695,8 @@ function tryDig(side) {
 function reviveIfDue() {
   while (digQueue.length > 0 && digQueue[0].turnDug + REVIVE_DELAY <= digCount) {
     const d = digQueue.shift();
+    // そのマスが珠（PEARL）になっている場合は復活させない（珠を上書き消去するのを防ぐ）
+    if (grid[d.y][d.x] === T.PEARL) continue;
     grid[d.y][d.x] = T.BLOCK;
     if (player.x === d.x && player.y === d.y) gameState = 'dead';
   }
@@ -1779,10 +1781,33 @@ function doDig(side, opts) {
 // 自動歩行
 const AUTO_STEP_MS = 75;
 let autoWalking = false;
+function canMoveOneStepTowards(tx, ty) {
+  // 状態を変更せず、 縦→横の順で1マス進めるか判定
+  if (ty !== player.y) {
+    const sy = ty > player.y ? 1 : -1;
+    const nx = player.x, ny = player.y + sy;
+    const here = cellType(player.x, player.y);
+    const dest = cellType(nx, ny);
+    if (sy < 0) {
+      if (here === T.LADDER && canEnter(nx, ny)) return true;
+    } else {
+      const destIsExit = inBounds(nx, ny) && isExitCell[ny][nx] && isExitRevealed();
+      if ((here === T.LADDER || here === T.ROPE || dest === T.LADDER || destIsExit) && canEnter(nx, ny)) return true;
+    }
+  }
+  if (tx !== player.x) {
+    const sx = tx > player.x ? 1 : -1;
+    const nx = player.x + sx, ny = player.y;
+    if (canEnter(nx, ny)) return true;
+  }
+  return false;
+}
 function autoWalkTo(tx, ty) {
   if (autoWalking) return;
   if (gameState !== 'play' || isBusy) return;
   if (player.x === tx && player.y === ty) return;
+  // 1マスも進めないなら walk を記録せず終了（moveLog の整合性を保つ）
+  if (!canMoveOneStepTowards(tx, ty)) return;
   // タップ目標座標を1エントリで記録
   mlPushWalk(tx, ty);
   autoWalking = true;
@@ -1998,9 +2023,6 @@ function isInputFocused() {
 window.addEventListener('keydown', (e) => {
   // モーダル表示中・入力フォーカス中は盤面操作キーを無効化
   if (isAnyModalOpen() || isInputFocused()) return;
-  // ボタンにフォーカスが残ってるとz単体などが食われる場合があるので、操作キー前にblur
-  const ae = document.activeElement;
-  if (ae && ae.tagName === 'BUTTON') ae.blur();
   if (e.key === 'r' || e.key === 'R') { initStage(); return; }
   if (e.key === 'u' || e.key === 'U') { if (!isBusy) doUndo(); e.preventDefault(); return; }
   if (gameState !== 'play' || isBusy) return;
