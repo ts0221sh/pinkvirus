@@ -680,7 +680,7 @@
 <body>
 
 <h1>Pink Virus</h1>
-<div class="v">build minimal-76</div>
+<div class="v">build minimal-77</div>
 
 <div id="aboutModal" class="modal hidden">
   <div class="modalBg"></div>
@@ -1230,7 +1230,18 @@ const HINTS = {
   '5': '37 L 47 R 37 R 18 R 19 R',
   '6': '14 R L 15 L 16 L 17 L 15 R 14 R L 15 L 16 L R',
   '7': '90 L a0 L b0 L 91 R 81 R a2 L 40 R 30 R 20 R 10 R 41 R 31 R 21 R 42 L 60 40 L 73 L 63 R 20 L 05 R 64 R 26 L 95 R 85 R',
-  // 8, 9, 10 は実装中
+  '8': '25 L R 26 R L 07 R 08 R 25 L R 26 R 37 19 R 09 R 26 L 25 L R 36 L 26 R 16 07 R 26 L 25 L R 15 08 R 09 R 07 R 26 L R 25 R L 08 R 07 R 46 L 19 L 49 R',
+  '9': '20 R 10 R 00 R 21 L 31 L 41 L 62 61 R 12 L 22 L 52 L a2 L b2 L 70 14 13 L 34 R 55 L 95 b3 L 35 R 47 14 L 54 L 14 64 85 L 94 R 95 R 5a 15 L',
+  '10': '11 R 12 R 13 R 14 R 15 R 16 R 11 R 17 R 18 R 19 R 1a R 12 R 11 R 13 R 14 R 15 R 16 R 12 R 11 R 17 R 18 R 19 R 13 R 12 R 11 R 14 R 15 R 16 R 13 R 12 R 11 R 17 R 18 R 14 R 13 R 12 R 11 R 19 R 15 R 14 R 13 R 12 R 11 R 16 R 15 R 14 R 13 R 12 R 17 R 16 R 15 R 14 R 13 R 18 R 17 R 16 R 15 R 14 R 19 R 18 R 17 R 16 R 15 R 1a R 19 R 18 R 17 R 5b 53 R 1b 11 R 1a R 19 R 18 R 5b 54 R 1b 12 R 13 R',
+};
+
+// Easy ステージのヒント
+const EASY_HINTS = {
+  'e1': '80 10 L 00 19 R 09 R',
+  'e2': 'R 21 L 14 L 24 L 34 L 15 R 05 R 16 R 90 R 80 R 70 R 60 R 70',
+  'e3': '20 L 21 L 50 R 61 R 51 R 20 22 L 60 R L 52 R a0 R 03 a3 R b5 86 R 55 R 45 R',
+  'e4': '55 R L 66 R 46 L 66 77 L',
+  'e5': '21 R 11 R L 01 R 22 R 12 R 02 R 23 L 33 L 43 L 14 L 24 L 34 L 44 L',
 };
 
 // 投稿ステージはサーバから取得して保持：{ id, title, author, board[], created_at }
@@ -1657,8 +1668,12 @@ function updateClearsListBtn() {
 function updateHintBtn() {
   const b = document.getElementById('btnHint');
   if (!b) return;
-  // Mainステージのみ表示
-  if (DEFAULT_STAGES[currentStage] && !testPlayMode) {
+  // Main または Easy ステージのみ表示（投稿ステージ・テストプレイは非表示）
+  if (testPlayMode) {
+    b.classList.add('hidden');
+    return;
+  }
+  if (DEFAULT_STAGES[currentStage] || EASY_STAGES[currentStage]) {
     b.classList.remove('hidden');
   } else {
     b.classList.add('hidden');
@@ -2278,13 +2293,13 @@ document.getElementById('btnClearsList').addEventListener('click', () => {
 document.getElementById('btnHint').addEventListener('click', () => {
   if (isBusy) return;
   const id = currentStage;
-  if (!DEFAULT_STAGES[id]) return;
-  const hint = HINTS[id];
+  let hint = null;
+  if (DEFAULT_STAGES[id]) hint = HINTS[id];
+  else if (EASY_STAGES[id]) hint = EASY_HINTS[id];
   if (!hint) {
     alert('このステージのヒントは実装中です');
     return;
   }
-  // 確認モーダル経由で再生
   if (!confirm('ヒントとして途中までのリプレイを再生します。 よろしいですか？')) return;
   let entries;
   try {
@@ -2293,14 +2308,12 @@ document.getElementById('btnHint').addEventListener('click', () => {
     alert('ヒントデータが壊れています：' + ex.message);
     return;
   }
-  // dryRun で整合性チェック
   try {
     dryRunMoveLog(entries);
   } catch (ex) {
     alert('ヒント再生中に矛盾：' + ex.message);
     return;
   }
-  // アニメ再生（fast）
   startAnimatedReplay(entries, () => {
     moveLog = entries;
     renderMoveLog();
