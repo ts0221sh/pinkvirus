@@ -680,7 +680,7 @@
 <body>
 
 <h1>Pink Virus</h1>
-<div class="v">build minimal-75</div>
+<div class="v">build minimal-76</div>
 
 <div id="aboutModal" class="modal hidden">
   <div class="modalBg"></div>
@@ -817,6 +817,7 @@
     <button id="btnUndo" disabled>↶ UNDO</button>
     <button id="btnReset">RESET</button>
     <button id="btnReviveHint" class="toggle">復活予告</button>
+    <button id="btnHint" class="hidden">ヒント</button>
     <button id="btnClearsList" class="hidden">クリア者一覧</button>
   </div>
 
@@ -1219,6 +1220,18 @@ const DEFAULT_STAGES = {
 };
 const DEFAULT_ORDER = ['1','2','3','4','5','6','7','8','9','10'];
 const TOTAL_DEFAULT_STAGES = DEFAULT_ORDER.length;
+
+// Main ステージのヒント（途中までのムーブログ）
+const HINTS = {
+  '1': 'a0 R b0 80 L 81 L 32 10 20 L 30 L 21 L 31 L 82 80 L 81 L a2 R 32 00 92 R 82 R a3 R 93 R a4 R b7 L b9 L 7a 44 L 54 L 64 L 74 L 45 L 55 L 65 L 75 L 46',
+  '2': 'R 51 R 41 R 31 R 21 R b0 52 R 42 R 32 R 53 L 63 L',
+  '3': '77 L',
+  '4': '18 R 19 R 1a R 4b 48 R 49 R 4a R 1b 18 R 19 R 1a R 7b 77 R 4b 48 R 49 R 1b 18 R 19 R 1a R 4b 4a R 48 R',
+  '5': '37 L 47 R 37 R 18 R 19 R',
+  '6': '14 R L 15 L 16 L 17 L 15 R 14 R L 15 L 16 L R',
+  '7': '90 L a0 L b0 L 91 R 81 R a2 L 40 R 30 R 20 R 10 R 41 R 31 R 21 R 42 L 60 40 L 73 L 63 R 20 L 05 R 64 R 26 L 95 R 85 R',
+  // 8, 9, 10 は実装中
+};
 
 // 投稿ステージはサーバから取得して保持：{ id, title, author, board[], created_at }
 let userStages = [];        // [{id, title, author, board, ...}, ...]
@@ -1623,6 +1636,7 @@ function initStage() {
   }
   updateProgressUI();
   updateClearsListBtn();
+  updateHintBtn();
   // テストプレイ時は戻るボタンを「エディタへ」に
   const backBtn = document.getElementById('btnBackToSelect');
   if (backBtn) backBtn.textContent = testPlayMode ? '◀ エディタ' : '◀ 選択画面';
@@ -1638,6 +1652,17 @@ function updateClearsListBtn() {
   b.classList.remove('hidden');
   const n = clearCounts[currentStage] || 0;
   b.textContent = `クリア者一覧(${n}名)`;
+}
+
+function updateHintBtn() {
+  const b = document.getElementById('btnHint');
+  if (!b) return;
+  // Mainステージのみ表示
+  if (DEFAULT_STAGES[currentStage] && !testPlayMode) {
+    b.classList.remove('hidden');
+  } else {
+    b.classList.add('hidden');
+  }
 }
 
 let testPlayMode = false; // エディタからのテストプレイ中フラグ
@@ -2248,6 +2273,42 @@ document.getElementById('btnReviveHint').addEventListener('click', (e) => {
 
 document.getElementById('btnClearsList').addEventListener('click', () => {
   if (currentStage) openClearsList(currentStage);
+});
+
+document.getElementById('btnHint').addEventListener('click', () => {
+  if (isBusy) return;
+  const id = currentStage;
+  if (!DEFAULT_STAGES[id]) return;
+  const hint = HINTS[id];
+  if (!hint) {
+    alert('このステージのヒントは実装中です');
+    return;
+  }
+  // 確認モーダル経由で再生
+  if (!confirm('ヒントとして途中までのリプレイを再生します。 よろしいですか？')) return;
+  let entries;
+  try {
+    entries = parseMoveLog(hint);
+  } catch (ex) {
+    alert('ヒントデータが壊れています：' + ex.message);
+    return;
+  }
+  // dryRun で整合性チェック
+  try {
+    dryRunMoveLog(entries);
+  } catch (ex) {
+    alert('ヒント再生中に矛盾：' + ex.message);
+    return;
+  }
+  // アニメ再生（fast）
+  startAnimatedReplay(entries, () => {
+    moveLog = entries;
+    renderMoveLog();
+    updateUndoBtn();
+    updateProgressUI();
+    render();
+    updateHUD();
+  }, 1.5);
 });
 
 // ============================
