@@ -408,8 +408,22 @@
     background: #1e2a5e;
     transform: translate(1px, 1px);
   }
+  .stageBtn .thumb,
+  .stageBtn .thumbWrap {
+    display: block;
+    width: 60%;
+    aspect-ratio: 1;
+    margin-bottom: 4px;
+    image-rendering: pixelated;
+    border: 1px solid #1a1f3a;
+    background: #1a1f3a;
+  }
+  .stageBtn .thumbWrap svg { width: 100%; height: 100%; display: block; }
+  .stageBtn.cleared .thumb,
+  .stageBtn.cleared .thumbWrap { border-color: #6eff8a; }
+
   .stageBtn .num {
-    font-size: 26px;
+    font-size: 16px;
     color: #ffe24a;
     line-height: 1;
   }
@@ -462,6 +476,10 @@
     padding: 10px 8px;
     text-align: left;
     align-items: flex-start;
+  }
+  .stageBtn.userStage .thumbWrap {
+    width: 50%;
+    margin-bottom: 6px;
   }
   .stageBtn.userStage .num {
     font-size: 14px;
@@ -680,7 +698,7 @@
 <body>
 
 <h1>Pink Virus</h1>
-<div class="v">build minimal-77</div>
+<div class="v">build minimal-78</div>
 
 <div id="aboutModal" class="modal hidden">
   <div class="modalBg"></div>
@@ -2510,6 +2528,50 @@ function switchScreen(which) {
   }
 }
 
+function buildThumb(boardArr) {
+  // 12x12 を 96x96 のSVGで描画。 出口は通常ブロックと同じ色
+  if (!boardArr || boardArr.length !== H) return '';
+  const cell = 8;
+  const sz = cell * W;
+  let parts = [];
+  for (let y = 0; y < H; y++) {
+    const row = [...boardArr[y]];
+    for (let x = 0; x < W; x++) {
+      const c = row[x];
+      const px = x * cell, py = y * cell;
+      let fill = null;
+      let extra = '';
+      if (c === '■' || c === '出') {
+        fill = '#a14828'; // 通常ブロック色
+      } else if (c === '田') {
+        fill = '#6fa9c7'; // 固定ブロック色
+      } else if (c === '≡') {
+        fill = '#1a1f3a';
+        // 桟2本 + 段3本
+        extra = `<rect x="${px+1}" y="${py}" width="1" height="${cell}" fill="#6eff8a"/>` +
+                `<rect x="${px+cell-2}" y="${py}" width="1" height="${cell}" fill="#6eff8a"/>` +
+                `<rect x="${px}" y="${py+1}" width="${cell}" height="1" fill="#6eff8a"/>` +
+                `<rect x="${px}" y="${py+cell/2|0}" width="${cell}" height="1" fill="#6eff8a"/>` +
+                `<rect x="${px}" y="${py+cell-2}" width="${cell}" height="1" fill="#6eff8a"/>`;
+      } else if (c === '〜' || c === '～') {
+        fill = '#1a1f3a';
+        extra = `<rect x="${px}" y="${py+1}" width="${cell}" height="1" fill="#c9aa66"/>`;
+      } else if (c === '●') {
+        fill = '#1a1f3a';
+        extra = `<circle cx="${px+cell/2}" cy="${py+cell/2}" r="${cell/2-1}" fill="#9be8ff"/>`;
+      } else if (c === '★') {
+        fill = '#1a1f3a';
+        extra = `<circle cx="${px+cell/2}" cy="${py+cell/2}" r="${cell/2-1}" fill="#ff6ec7"/>`;
+      } else {
+        fill = '#1a1f3a';
+      }
+      parts.push(`<rect x="${px}" y="${py}" width="${cell}" height="${cell}" fill="${fill}"/>`);
+      if (extra) parts.push(extra);
+    }
+  }
+  return `<svg class="thumb" viewBox="0 0 ${sz} ${sz}" xmlns="http://www.w3.org/2000/svg">${parts.join('')}</svg>`;
+}
+
 function renderStageSelect() {
   const grid = document.getElementById('stageGrid');
   grid.innerHTML = '';
@@ -2521,7 +2583,8 @@ function renderStageSelect() {
     const cn = clearCounts[id] || 0;
     const cnStr = ONLINE_ENABLED ? `<div class="clearN">クリア者:${cn}</div>` : '';
     const statusStr = isStageCleared(id) ? '<div class="status">CLEAR</div>' : '';
-    b.innerHTML = `<div class="num">${id}</div>${statusStr}${cnStr}`;
+    const thumb = buildThumb(getStageBoard(id));
+    b.innerHTML = `${thumb}<div class="num">${id}</div>${statusStr}${cnStr}`;
     b.addEventListener('click', () => {
       currentStage = id;
       testPlayMode = false;
@@ -2541,8 +2604,9 @@ function renderStageSelect() {
       const cn = clearCounts[id] || 0;
       const cnStr = ONLINE_ENABLED ? `<div class="clearN">クリア者:${cn}</div>` : '';
       const statusStr = isStageCleared(id) ? '<div class="status">CLEAR</div>' : '';
-      const label = id.slice(1); // 'e1' -> '1'
-      b.innerHTML = `<div class="num">E-${label}</div>${statusStr}${cnStr}`;
+      const label = id.slice(1);
+      const thumb = buildThumb(getStageBoard(id));
+      b.innerHTML = `${thumb}<div class="num">E-${label}</div>${statusStr}${cnStr}`;
       b.addEventListener('click', () => {
         currentStage = id;
         testPlayMode = false;
@@ -2563,6 +2627,11 @@ function renderStageSelect() {
         const b = document.createElement('button');
         b.className = 'stageBtn userStage';
         if (isStageCleared(u.id)) b.classList.add('cleared');
+        // サムネ
+        const thumbWrap = document.createElement('div');
+        thumbWrap.className = 'thumbWrap';
+        thumbWrap.innerHTML = buildThumb(u.board);
+        b.appendChild(thumbWrap);
         const numDiv = document.createElement('div');
         numDiv.className = 'num';
         numDiv.textContent = u.title || '無題';
