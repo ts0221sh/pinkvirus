@@ -454,10 +454,25 @@
     font-weight: bold;
   }
   .selectTitle.subtitle {
-    font-size: 16px;
-    margin-top: 24px;
-    color: #b9e8ff;
-    letter-spacing: 2px;
+    font-size: 18px;
+    margin-top: 90px;
+    margin-bottom: 16px;
+    color: #ffe24a;
+    letter-spacing: 3px;
+    border-bottom: 1px solid #ffe24a;
+    padding-bottom: 6px;
+    background: rgba(255, 226, 74, 0.08);
+    padding-left: 6px;
+    width: min(94vw, 500px);
+    display: block !important;
+    visibility: visible !important;
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+  }
+  /* Mainグリッドや他のグリッドが直後のsubtitleと隙間を作る */
+  #stageGrid, #easyStageGrid, #userStageGrid {
+    margin-bottom: 24px;
   }
   #userStageGrid {
     display: grid;
@@ -496,6 +511,7 @@
   }
 
   #userStagesPanel.hidden { display: none; }
+  #userStagesPanel { margin-top: 90px; }
   #modeBtn {
     font-family: monospace;
     font-size: 12px;
@@ -698,7 +714,7 @@
 <body>
 
 <h1>Pink Virus</h1>
-<div class="v">build minimal-78</div>
+<div class="v">build minimal-83</div>
 
 <div id="aboutModal" class="modal hidden">
   <div class="modalBg"></div>
